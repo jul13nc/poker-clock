@@ -4,6 +4,7 @@
 	import { page } from '$app/state';
 	import type { LayoutData } from './$types';
 	import { formatDateFr } from '#lib/domain/format';
+	import logo from '../../Logo_VSOP.png';
 
 	let { data, children }: { data: LayoutData; children: Snippet } = $props();
 
@@ -27,9 +28,9 @@
 {:else}
 <div class="topbar">
 	<div class="container topbar-inner">
-		<a class="brand" href="/">
-			<span class="brand-mark">♠</span>
-			<span>Poker Clock</span>
+		<a class="brand" href="/" aria-label="VSOP — Accueil">
+			<img class="brand-logo" src={logo} alt="" width="48" height="48" />
+			<span>VSOP</span>
 		</a>
 		<nav class="nav" aria-label="Navigation principale">
 			{#each links as link (link.href)}

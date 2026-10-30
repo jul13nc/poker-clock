@@ -13,6 +13,7 @@
 	import { buildLiveRanking } from '#lib/domain/tournament';
 	import { ServerClock, TournamentSync } from '#lib/client/sync';
 	import { keepScreenAwake } from '#lib/client/screen';
+	import logo from '../../Logo_VSOP.png';
 
 	let { tournament, poll = true, timeSource }: { tournament: TournamentState; poll?: boolean; timeSource?: ServerClock } = $props();
 
@@ -176,6 +177,7 @@
 		<div class="screen-main screen-main-stage">
 			<div class="screen-stage">
 				<aside class="screen-side" style:--screen-rows={Math.max(1, liveRanking.length)}>
+					<img class="screen-ranking-logo" src={logo} alt="VSOP — Vancia Series of Poker" width="796" height="796" />
 					<p class="screen-side-title">Classement</p>
 					<ol class="live-ranking">
 						{#each liveRanking as row (row.place)}

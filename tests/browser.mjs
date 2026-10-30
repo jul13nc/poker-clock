@@ -57,6 +57,9 @@ try {
 	await admin.getByRole('button', { name: 'Démarrer', exact: true }).click();
 	await tv.getByText('Niveau 1', { exact: true }).waitFor({ timeout: 15000 });
 	const time = await tv.locator('.screen-time').innerText();
+	await tv.locator('.screen-ranking-logo').evaluate((image) => image.decode());
+	assert.ok(await tv.locator('.screen-ranking-logo').evaluate((image) => image.naturalWidth > 0));
+	if (process.env.BRANDING_SCREENSHOTS) await tv.screenshot({ path: join(process.env.BRANDING_SCREENSHOTS, 'vsop-clock.png') });
 	assert.match(time, /^(14|15):/, 'La TV doit ignorer décalage de 5 minutes de son horloge');
 	for (const viewport of [{ width: 960, height: 540 }, { width: 1366, height: 768 }, { width: 1920, height: 1080 }]) {
 		await tv.setViewportSize(viewport); await fits('Horloge');
@@ -154,6 +157,14 @@ try {
 	console.log('Blindes : génération, création, modification, défaut, sélection tournoi et suppression sans effet sur tournoi OK.');
 	await admin.goto(`${base}/admin`);
 	await admin.getByRole('button', { name: /Déconnexion|Se déconnecter/ }).click();
+	await admin.goto(base);
+	for (const selector of ['.brand-logo', '.hero-logo']) {
+		await admin.locator(selector).evaluate((image) => image.decode());
+		assert.ok(await admin.locator(selector).evaluate((image) => image.naturalWidth > 0));
+	}
+	if (process.env.BRANDING_SCREENSHOTS) await admin.screenshot({ path: join(process.env.BRANDING_SCREENSHOTS, 'vsop-home.png') });
+	await admin.setViewportSize({ width: 390, height: 844 });
+	assert.ok(await admin.evaluate(() => document.documentElement.scrollWidth <= innerWidth), 'Accueil mobile sans débordement');
 	await admin.goto(`${base}/t/t/controle`);
 	await admin.waitForURL('**/admin');
 	assert.deepEqual(errors, [], 'Erreurs navigateur');
