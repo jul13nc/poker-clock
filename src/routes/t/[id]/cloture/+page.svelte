@@ -63,6 +63,8 @@
 </div>
 
 <form method="POST" action="?/close" class="stack-lg">
+	<input type="hidden" name="command_id" value={data.commandId} />
+	<input type="hidden" name="revision" value={data.tournament.revision} />
 	<section class="card">
 		<div class="card-head">
 			<h2>Classement final</h2>

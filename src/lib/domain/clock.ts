@@ -20,8 +20,8 @@ export function clockElapsedMs(clock: ClockState | null, now: number): number {
 
 /**
  * Temps réellement joué, pauses exclues, sans tenir compte des sauts de niveau
- * ou des minutes ajoutées. Sert aux échéances de tournoi comme la fin des
- * recaves, qui suivent l'horloge murale et non la progression des blindes.
+ * ou des minutes ajoutées. Mesure la durée réelle, distincte de la progression
+ * du tournoi utilisée pour les blindes et les recaves.
  */
 export function playElapsedMs(clock: ClockState | null, now: number): number {
 	if (!clock) return 0;
@@ -34,7 +34,7 @@ export function rebuyRemainingMs(
 	clock: ClockState | null,
 	now: number
 ): number {
-	return Math.max(0, durationMinutes * MINUTE_MS - playElapsedMs(clock, now));
+	return Math.max(0, durationMinutes * MINUTE_MS - clockElapsedMs(clock, now));
 }
 
 export function computeClock(

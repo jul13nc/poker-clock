@@ -51,6 +51,7 @@ export type PlayerState = {
 
 export type TournamentState = {
 	id: string;
+	revision: number;
 	name: string;
 	status: TournamentStatus;
 	multiplier: number;
@@ -85,6 +86,7 @@ export type Season = {
 
 export type TournamentRow = {
 	id: string;
+	revision: number;
 	season_id: string;
 	name: string;
 	played_at: string;

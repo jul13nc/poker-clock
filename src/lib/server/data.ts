@@ -3,6 +3,7 @@ import { seasonWindow } from '#lib/domain/format';
 import { averageStack, totalChips } from '#lib/domain/tournament';
 import { computePayouts, parsePayoutTableJson } from '#lib/domain/payout';
 import { DEFAULT_PAYOUT_TABLE } from '#lib/domain/defaults';
+import { rankStandings } from '#lib/domain/standings';
 import type {
 	Level,
 	Participant,
@@ -19,7 +20,7 @@ export type PlayerRow = {
 	created_at: string;
 };
 
-export type TournamentListItem = TournamentWithSeason & {
+export type TournamentListItem = Omit<TournamentWithSeason, 'structure_json' | 'clock_json'> & {
 	player_count: number;
 	entries_count: number;
 };
@@ -30,7 +31,9 @@ export type StandingPoints = {
 	points: number;
 	played: number;
 	wins: number;
+	rank: number;
 };
+type StandingPointsRow = Omit<StandingPoints, 'rank'>;
 
 export type Standing72 = {
 	id: string;
@@ -156,7 +159,9 @@ export async function listTournaments(
 ): Promise<TournamentListItem[]> {
 	return queryAll<TournamentListItem>(
 		db,
-		`SELECT t.*, s.name AS season_name, s.points_scale_json, s.payout_json,
+		`SELECT t.id, t.season_id, t.name, t.played_at, t.status, t.multiplier,
+		        t.buy_in, t.starting_stack, t.rebuy_duration, t.revision, t.created_at,
+		        s.name AS season_name, s.points_scale_json, s.payout_json,
 		        s.rebuy_rule, s.default_buyin,
 		        (SELECT COUNT(*) FROM tournament_players tp WHERE tp.tournament_id = t.id) AS player_count,
 		        (SELECT COALESCE(SUM(tp.entries), 0) FROM tournament_players tp WHERE tp.tournament_id = t.id) AS entries_count
@@ -207,7 +212,7 @@ export async function getStandingsPoints(
 	db: D1Database,
 	seasonId: string
 ): Promise<StandingPoints[]> {
-	return queryAll<StandingPoints>(
+	return rankStandings(await queryAll<StandingPointsRow>(
 		db,
 		`SELECT p.id, p.name,
 		        COALESCE(SUM(tp.points), 0) AS points,
@@ -220,7 +225,7 @@ export async function getStandingsPoints(
 		 GROUP BY p.id, p.name
 		 ORDER BY points DESC, wins DESC, p.name COLLATE NOCASE`,
 		seasonId
-	);
+	));
 }
 
 /**
@@ -232,7 +237,7 @@ export async function getStandingsPointsExcluding(
 	seasonId: string,
 	excludedTournamentId: string
 ): Promise<StandingPoints[]> {
-	return queryAll<StandingPoints>(
+	return rankStandings(await queryAll<StandingPointsRow>(
 		db,
 		`SELECT p.id, p.name,
 		        COALESCE(SUM(tp.points), 0) AS points,
@@ -247,7 +252,7 @@ export async function getStandingsPointsExcluding(
 		 ORDER BY points DESC, wins DESC, p.name COLLATE NOCASE`,
 		seasonId,
 		excludedTournamentId
-	);
+	));
 }
 
 export async function getStandings72(db: D1Database, seasonId: string): Promise<Standing72[]> {
@@ -282,11 +287,19 @@ export async function listStructures(db: D1Database): Promise<BlindStructure[]> 
 
 export async function buildTournamentState(
 	db: D1Database,
-	id: string
+	id: string,
+	selected?: TournamentWithSeason,
+	attempt = 0
 ): Promise<TournamentState | null> {
-	const tournament = await getTournament(db, id);
+	const tournament = selected ?? await getTournament(db, id);
 	if (!tournament) return null;
 	const participants = await getParticipants(db, id);
+	const version = await queryOne<{ revision: number }>(db, 'SELECT revision FROM tournaments WHERE id = ?', id);
+	if (!version) return null;
+	if (version.revision !== tournament.revision) {
+		if (attempt >= 3) throw new Error('Tournoi modifié trop rapidement ; réessayez.');
+		return buildTournamentState(db, id, undefined, attempt + 1);
+	}
 
 	const totalEntries = participants.reduce((sum, participant) => sum + participant.entries, 0);
 	const chips = totalChips(tournament.starting_stack, totalEntries);
@@ -301,6 +314,7 @@ export async function buildTournamentState(
 
 	return {
 		id: tournament.id,
+		revision: tournament.revision,
 		name: tournament.name,
 		status: tournament.status,
 		multiplier: tournament.multiplier,
@@ -330,13 +344,18 @@ export async function buildTournamentState(
 
 /** Une partie démarrée est prioritaire sur les tournois en préparation. */
 export async function buildCurrentTournamentState(db: D1Database): Promise<TournamentState | null> {
-	const tournament = await queryOne<{ id: string }>(
+	const tournament = await getCurrentTournament(db);
+	return tournament ? buildTournamentState(db, tournament.id, tournament) : null;
+}
+
+export async function getCurrentTournament(db: D1Database): Promise<TournamentWithSeason | null> {
+	return queryOne<TournamentWithSeason>(
 		db,
-		`SELECT id FROM tournaments
-		 WHERE status IN ('running', 'draft')
-		 ORDER BY CASE status WHEN 'running' THEN 0 ELSE 1 END,
-		          played_at DESC, created_at DESC, id DESC
+		`SELECT t.*, s.name AS season_name, s.points_scale_json, s.payout_json, s.rebuy_rule, s.default_buyin
+		 FROM tournaments t JOIN seasons s ON s.id = t.season_id
+		 WHERE t.status IN ('running', 'draft')
+		 ORDER BY CASE t.status WHEN 'running' THEN 0 ELSE 1 END,
+		          t.played_at DESC, t.created_at DESC, t.id DESC
 		 LIMIT 1`
 	);
-	return tournament ? buildTournamentState(db, tournament.id) : null;
 }

@@ -77,6 +77,7 @@
 							</option>
 						{/each}
 					</select>
+					<a class="hint" href="/blindes">Gérer les configurations de blindes</a>
 				</label>
 			</div>
 		</div>

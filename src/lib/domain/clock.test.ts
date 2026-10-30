@@ -96,13 +96,37 @@ describe('compte à rebours des recaves', () => {
 		expect(rebuyRemainingMs(90, resumed, T0 + 55 * MIN)).toBe(55 * MIN);
 	});
 
-	it('ignore les changements de niveau et le temps ajouté aux blindes', () => {
+	it('suit les changements de niveau et le temps ajouté aux blindes', () => {
 		const next = nextLevel(levels, startClock(T0), T0 + MIN)!;
 		const previous = previousLevel(levels, next, T0 + MIN)!;
-		const adjusted = addTime(previous, 5 * MIN)!;
-		for (const clock of [next, previous, adjusted]) {
-			expect(rebuyRemainingMs(90, clock, T0 + MIN)).toBe(89 * MIN);
+		expect(rebuyRemainingMs(90, next, T0 + MIN)).toBe(70 * MIN);
+		expect(rebuyRemainingMs(90, previous, T0 + MIN)).toBe(90 * MIN);
+		const adjusted = addTime(next, MIN)!;
+		expect(rebuyRemainingMs(90, adjusted, T0 + MIN)).toBe(71 * MIN);
+	});
+
+	it('ajoute et retire une minute aux deux décomptes pendant une pause', () => {
+		const paused = pauseClock(startClock(T0), T0 + 10 * MIN)!;
+		for (const adjustment of [MIN, -MIN]) {
+			const adjusted = addTime(paused, adjustment)!;
+			expect(computeClock(levels, adjusted, T0 + 50 * MIN).remainingMs).toBe(10 * MIN + adjustment);
+			expect(rebuyRemainingMs(90, adjusted, T0 + 50 * MIN)).toBe(80 * MIN + adjustment);
 		}
+	});
+
+	it('retirer une minute franchit un niveau et avance aussi échéance des recaves', () => {
+		const adjusted = addTime(startClock(T0), -MIN)!;
+		const now = T0 + 19.5 * MIN;
+		expect(computeClock(levels, adjusted, now).index).toBe(1);
+		expect(rebuyRemainingMs(90, adjusted, now)).toBe(69.5 * MIN);
+	});
+
+	it('réouvre le décompte après retour avant échéance et borne début du tournoi', () => {
+		const clock = startClock(T0);
+		expect(rebuyRemainingMs(40, clock, T0 + 40 * MIN)).toBe(0);
+		const previous = previousLevel(levels, clock, T0 + 40 * MIN)!;
+		expect(rebuyRemainingMs(40, previous, T0 + 40 * MIN)).toBe(20 * MIN);
+		expect(rebuyRemainingMs(90, addTime(clock, MIN), T0)).toBe(90 * MIN);
 	});
 
 	it('reste à zéro après expiration ou si les recaves sont désactivées', () => {

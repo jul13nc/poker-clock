@@ -14,15 +14,22 @@
     "deploy": "npm run build && wrangler deploy",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
+    "test:browser": "node tests/browser.mjs",
+    "verify": "npm run check && npm test && npm run build",
     "db:migrate": "wrangler d1 migrations apply poker-clock-db --local",
     "db:migrate:remote": "wrangler d1 migrations apply poker-clock-db --remote",
     "prepare": "svelte-kit sync"
+  },
+  "engines": {
+    "node": ">=24 <25"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20261029.1",
     "@sveltejs/adapter-cloudflare": "^8.0.1",
     "@sveltejs/kit": "^3.1.0",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@types/node": "^24.19.2",
+    "playwright": "^1.64.1",
     "svelte": "^5.57.3",
     "svelte-check": "^4.7.7",
     "typescript": "^6.0.3",

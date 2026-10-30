@@ -9,6 +9,7 @@ import {
 import { getDb } from '#lib/server/db';
 import { totalDurationMs } from '#lib/domain/clock';
 import { DEFAULT_REBUY_DURATION } from '#lib/domain/defaults';
+import { validateBlindLevels } from '#lib/domain/blinds';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	if (!locals.isAdmin) throw redirect(303, '/admin');
@@ -49,7 +50,7 @@ export const actions: Actions = {
 		const rebuyDuration = Number(form.get('rebuy_duration') ?? DEFAULT_REBUY_DURATION);
 		const multiplier = Number(form.get('multiplier'));
 		const structureId = String(form.get('structure_id') ?? '');
-		const playerIds = form.getAll('players').map(String);
+		const playerIds = [...new Set(form.getAll('players').map(String))];
 
 		if (name.length < 2 || name.length > 80) {
 			return fail(400, { error: 'Le nom du tournoi doit faire entre 2 et 80 caractères.' });
@@ -72,15 +73,19 @@ export const actions: Actions = {
 		if (playerIds.length < 2) {
 			return fail(400, { error: 'Sélectionnez au moins deux joueurs.' });
 		}
+		const active = new Set((await listActivePlayers(db)).map((player) => player.id));
+		if (playerIds.some((id) => !active.has(id))) return fail(400, { error: 'Joueur absent ou inactif.' });
 
 		const structures = await listStructures(db);
-		const structure = structures.find((entry) => entry.id === structureId) ?? structures[0];
+		const structure = structureId ? structures.find((entry) => entry.id === structureId) : structures[0];
 		if (!structure) {
 			return fail(400, { error: 'Aucune structure de blindes disponible.' });
 		}
+		const levels = validateBlindLevels(parseLevels(structure.levels_json));
+		if (!levels) return fail(400, { error: 'Structure invalide : corrigez ses niveaux depuis la page Blindes (sans ante ni pause).' });
 
 		const id = crypto.randomUUID();
-		await db
+		const insert = db
 			.prepare(
 				`INSERT INTO tournaments
 				 (id, season_id, name, played_at, status, multiplier, buy_in, starting_stack, rebuy_duration, structure_json)
@@ -95,20 +100,19 @@ export const actions: Actions = {
 				buyIn,
 				Math.round(startingStack),
 				rebuyDuration,
-				structure.levels_json
-			)
-			.run();
+				JSON.stringify(levels)
+			);
 
-		const uniquePlayers = [...new Set(playerIds)];
-		await db.batch(
-			uniquePlayers.map((playerId) =>
+		await db.batch([
+			insert,
+			...playerIds.map((playerId) =>
 				db
 					.prepare(
 						'INSERT INTO tournament_players (tournament_id, player_id) VALUES (?, ?)'
 					)
 					.bind(id, playerId)
 			)
-		);
+		]);
 
 		throw redirect(303, `/t/${id}/controle`);
 	}

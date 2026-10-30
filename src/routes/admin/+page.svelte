@@ -46,8 +46,8 @@
 				<button class="btn btn-primary" type="submit">Entrer</button>
 			</form>
 			<p class="hint">
-				En local, le PIN par défaut est <code>1234</code>. En production, définissez-le avec
-				<code>wrangler secret put ADMIN_PIN</code>.
+				Configurez <code>ADMIN_PIN</code> et <code>SESSION_SECRET</code> (32 caractères minimum).
+				Aucun PIN par défaut n'est activé, même en local. Les sessions expirent après 7 jours.
 			</p>
 		</div>
 	</section>

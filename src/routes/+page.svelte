@@ -11,7 +11,7 @@
 </svelte:head>
 
 <section class="hero">
-	<p class="eyebrow">Championnat {data.season.name.replace('Saison ', '')}</p>
+	<p class="eyebrow">Championnat {data.season?.name.replace('Saison ', '')}</p>
 	<h1>Le tournoi, l'horloge, et la course au titre.</h1>
 	<p>
 		Blindes et horloge de tournoi, gestion des joueurs, classement annuel aux points et
@@ -67,8 +67,8 @@
 					{#each data.points as player, index (player.id)}
 						<li>
 							<span class="cluster">
-								<span class="rank" class:rank-1={index === 0} class:rank-2={index === 1} class:rank-3={index === 2}>
-									{index + 1}
+								<span class="rank" class:rank-1={player.rank === 1} class:rank-2={player.rank === 2} class:rank-3={player.rank === 3}>
+									{player.rank}
 								</span>
 								<span>{player.name}</span>
 							</span>

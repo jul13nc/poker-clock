@@ -3,6 +3,7 @@ import type { PageServerLoad } from './$types';
 import {
 	getParticipants,
 	getStandingsPointsExcluding,
+	getStandingsPoints,
 	getTournament,
 	parseJsonNumberList
 } from '#lib/server/data';
@@ -14,9 +15,10 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 	const tournament = await getTournament(db, params.id);
 	if (!tournament) error(404, 'Tournoi introuvable.');
 
-	const [participants, before] = await Promise.all([
+	const [participants, before, current] = await Promise.all([
 		getParticipants(db, params.id),
-		getStandingsPointsExcluding(db, tournament.season_id, tournament.id)
+		getStandingsPointsExcluding(db, tournament.season_id, tournament.id),
+		getStandingsPoints(db, tournament.season_id)
 	]);
 
 	const beforeById = new Map(before.map((row) => [row.id, row]));
@@ -67,19 +69,8 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 		};
 	});
 
-	// Rang au classement général, à égalité de points.
-	const rankByPlayer = new Map<string, number>();
-	const sortedByTotal = [...rows].sort(
-		(a, b) => b.totalPoints - a.totalPoints || a.name.localeCompare(b.name, 'fr')
-	);
-	let lastPoints: number | null = null;
-	let lastRank = 0;
-	sortedByTotal.forEach((row, index) => {
-		const rank = lastPoints !== null && row.totalPoints === lastPoints ? lastRank : index + 1;
-		rankByPlayer.set(row.playerId, rank);
-		lastPoints = row.totalPoints;
-		lastRank = rank;
-	});
+	// Choix métier : classement actuel de toute la saison, ex æquo aux points.
+	const rankByPlayer = new Map(current.map((player) => [player.id, player.rank]));
 
 	return {
 		tournament,

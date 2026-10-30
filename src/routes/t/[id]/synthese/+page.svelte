@@ -162,5 +162,5 @@
 <p class="assumption" style="margin-top: 1.5rem;">
 	« Points du jour » suit le barème de la saison. Avec la règle recave : R1 dernier, R2 avant-dernier, etc.
 	« Points généraux » additionne la journée au cumul de la saison, et « rang général » situe
-	le joueur dans le championnat à l'issue de cette soirée.
+	le joueur dans le classement actuel du championnat. Les totaux incluent toutes les soirées clôturées de la saison.
 </p>

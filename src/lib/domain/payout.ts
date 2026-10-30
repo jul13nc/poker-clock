@@ -60,12 +60,14 @@ export function computePayouts(
 	buyIn: number,
 	table: PayoutTable
 ): PayoutLine[] {
-	if (playerCount <= 0) return [];
+	if (!Number.isSafeInteger(playerCount) || playerCount <= 0 || !Number.isSafeInteger(totalEntries) || totalEntries < 0 || !Number.isFinite(buyIn) || buyIn < 0) return [];
 
 	const poolCents = Math.round(Math.max(0, buyIn) * Math.max(0, totalEntries) * 100);
-	if (poolCents <= 0) return [];
+	if (!Number.isSafeInteger(poolCents) || poolCents <= 0) return [];
 
-	const tiers = normalizeTable(table);
+	const validated = parsePayoutTable(JSON.stringify(table));
+	if (!validated) throw new Error('Table des gains incohérente.');
+	const tiers = normalizeTable(validated);
 	if (tiers.length === 0) return [];
 
 	const pool = poolCents / 100;
@@ -86,6 +88,17 @@ export function computePayouts(
 		.map((amount) => (exact ? Math.round(amount * 100) : Math.round(amount * scale) * 100));
 
 	let remainder = poolCents - amountsCents.reduce((sum, amount) => sum + amount, 0);
+	// Si les arrondis dépassent le pool et épuiseraient le premier gain,
+	// réduire les dernières places avant d'affecter le reliquat au vainqueur.
+	if (amountsCents[0] + remainder < 0) {
+		let deficit = -(amountsCents[0] + remainder);
+		for (let i = amountsCents.length - 1; i > 0 && deficit > 0; i--) {
+			const reduction = Math.min(amountsCents[i], deficit);
+			amountsCents[i] -= reduction;
+			deficit -= reduction;
+		}
+		remainder = poolCents - amountsCents.reduce((sum, amount) => sum + amount, 0);
+	}
 	amountsCents[0] += remainder;
 
 	return amountsCents.map((cents, index) => ({
@@ -108,18 +121,19 @@ export function parsePayoutTable(input: string): PayoutTable | null {
 	const table: PayoutTable = {};
 	for (const [poolKey, places] of Object.entries(parsed as Record<string, unknown>)) {
 		const pool = Number(poolKey);
-		if (!Number.isFinite(pool) || pool <= 0) return null;
+		if (!Number.isFinite(pool) || pool <= 0 || !Number.isSafeInteger(Math.round(pool * 100)) || Math.abs(pool * 100 - Math.round(pool * 100)) > 1e-6 || String(pool) !== poolKey) return null;
 		if (!places || typeof places !== 'object' || Array.isArray(places)) return null;
 
 		const normalized: Record<string, number> = {};
 		for (const [placeKey, amount] of Object.entries(places as Record<string, unknown>)) {
 			const place = Number(placeKey);
-			if (!Number.isInteger(place) || place < 1) return null;
-			if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) return null;
+			if (!Number.isInteger(place) || place < 1 || place > 1000 || String(place) !== placeKey) return null;
+			if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0 || !Number.isSafeInteger(Math.round(amount * 100)) || Math.abs(amount * 100 - Math.round(amount * 100)) > 1e-6) return null;
 			normalized[String(place)] = amount;
 		}
 
 		if (Object.keys(normalized).length === 0) return null;
+		if (Object.values(normalized).reduce((sum, amount) => sum + Math.round(amount * 100), 0) !== Math.round(pool * 100)) return null;
 		table[String(pool)] = normalized;
 	}
 

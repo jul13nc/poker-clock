@@ -10,6 +10,7 @@
 	} from '#lib/domain/clock';
 	import type { TournamentState } from '#lib/domain/types';
 	import { formatChips, formatEuro, formatPlayerName } from '#lib/domain/format';
+	import { TournamentSync } from '#lib/client/sync';
 
 	let { data }: { data: PageData } = $props();
 
@@ -18,6 +19,13 @@
 	let now = $state(Date.now());
 	let pending = $state<string | null>(null);
 	let message = $state<string | null>(null);
+	let connected = $state(true);
+	let lastSync = $state<number | null>(null);
+	let retryCommand = $state<{ action: string; playerId?: string; minutes?: number; commandId: string; expectedRevision: number } | null>(null);
+	// svelte-ignore state_referenced_locally
+	const sync = new TournamentSync(`/api/tournaments/${data.state.id}/state`, data.state,
+		(next) => { if (next) live = next; },
+		(status) => { connected = status.connected; lastSync = status.lastSync; }, 3000);
 	// Replié par défaut si les places sont déjà tirées, pour garder les
 	// éliminations à portée de pouce.
 	// svelte-ignore state_referenced_locally
@@ -41,47 +49,44 @@
 
 	$effect(() => {
 		const tick = setInterval(() => {
-			now = Date.now();
+			now = sync.clock.now();
 		}, 250);
 		return () => clearInterval(tick);
 	});
 
-	$effect(() => {
-		const poll = setInterval(async () => {
-			if (pending) return;
-			try {
-				const response = await fetch(`/api/tournaments/${live.id}/state`, {
-					cache: 'no-store'
-				});
-				if (response.ok) live = (await response.json()) as TournamentState;
-			} catch {
-				// ignore
-			}
-		}, 3000);
-		return () => clearInterval(poll);
-	});
+	$effect(() => sync.start());
 
-	async function act(action: string, playerId?: string, minutes?: number) {
+	async function act(action: string, playerId?: string, minutes?: number, retry = false) {
 		if (pending) return;
 		pending = `${action}:${playerId ?? ''}`;
 		message = null;
+		const sent = performance.now();
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), 8000);
+		const command = retry && retryCommand ? retryCommand : { action, playerId, minutes, commandId: crypto.randomUUID(), expectedRevision: live.revision };
+		retryCommand = command;
 		try {
 			const response = await fetch(`/api/tournaments/${live.id}/action`, {
 				method: 'POST',
+				signal: controller.signal,
 				headers: { 'content-type': 'application/json' },
-				body: JSON.stringify({ action, playerId, minutes })
+				body: JSON.stringify(command)
 			});
 			const payload = await response.json();
 			if (!response.ok) {
+				retryCommand = null;
 				message = payload.error ?? 'Action impossible.';
+				if (response.status === 409) void sync.refresh();
 			} else {
-				live = payload as TournamentState;
-				now = Date.now();
+				retryCommand = null;
+				sync.accept(payload, sent);
+				now = sync.clock.now();
 				if (action === 'draw_seats') seatsOpen = true;
 			}
 		} catch {
-			message = 'Connexion perdue. Réessayez.';
+			message = 'Réponse non reçue. Réessayez la même commande sans risque de double saisie.';
 		} finally {
+			clearTimeout(timeout);
 			pending = null;
 		}
 	}
@@ -109,6 +114,12 @@
 
 {#if message}
 	<p class="notice notice-error" style="margin-bottom: 1rem;">{message}</p>
+{/if}
+{#if retryCommand && !pending}
+	<button class="btn" onclick={() => { if (retryCommand) void act(retryCommand.action, retryCommand.playerId, retryCommand.minutes, true); }}>Réessayer la dernière commande</button>
+{/if}
+{#if !connected}
+	<p class="notice notice-error" title={lastSync ? new Date(lastSync).toLocaleTimeString('fr-FR') : 'Jamais synchronisé'}>Connexion perdue · état potentiellement ancien.</p>
 {/if}
 
 <section class="remote-clock">
@@ -163,6 +174,9 @@
 			<button class="btn" onclick={() => act('add_time', undefined, 1)} disabled={pending !== null || view.status === 'idle'}>
 				+1 minute
 			</button>
+			<button class="btn" onclick={() => act('add_time', undefined, -1)} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
+				−1 minute
+			</button>
 		</div>
 		{#if view.status === 'finished'}
 			<p class="notice notice-info">
@@ -170,101 +184,6 @@
 			</p>
 		{/if}
 	</div>
-</section>
-
-<section class="card" style="margin-top: 1rem;">
-	<div class="card-head">
-		<h2>Recaves</h2>
-		<span class="small muted">
-			{#if rebuyRemaining === 0 || live.status === 'finished'}
-				Recaves terminées
-			{:else}
-				Fin dans {formatClock(rebuyRemaining)}
-			{/if}
-		</span>
-	</div>
-	<form
-		class="card-body stack"
-		onsubmit={(event) => {
-			event.preventDefault();
-			const form = new FormData(event.currentTarget);
-			void act('set_rebuy_duration', undefined, Number(form.get('rebuy_duration')));
-		}}
-	>
-		<label class="field">
-			<span>Durée des recaves (minutes)</span>
-			<input type="number" name="rebuy_duration" min="0" step="1" value={live.rebuyDuration} required disabled={live.status === 'finished'} />
-			<span class="hint">Depuis le démarrage, pauses manuelles exclues. 0 pour aucune recave.</span>
-		</label>
-		<div class="cluster">
-			<button class="btn" type="submit" disabled={pending !== null || live.status === 'finished'}>
-				{busy('set_rebuy_duration') ? 'Enregistrement…' : 'Enregistrer la durée'}
-			</button>
-		</div>
-	</form>
-</section>
-
-<section class="card" style="margin-top: 1rem;">
-	<div class="card-head">
-		<h2>Placement à table</h2>
-		<div class="cluster">
-			{#if seatedPlayers.length > 0}
-				<button
-					class="btn btn-sm btn-ghost"
-					onclick={() => (seatsOpen = !seatsOpen)}
-					aria-expanded={seatsOpen}
-				>
-					{seatsOpen ? 'Réduire' : 'Afficher les places'}
-				</button>
-				<a
-					class="btn btn-sm btn-ghost"
-					href="/t/{live.id}/ecran?places=1"
-					target="_blank"
-					rel="noreferrer"
-				>
-					Afficher sur la TV
-				</a>
-			{/if}
-			<button
-				class="btn btn-sm btn-gold"
-				onclick={() => act('draw_seats')}
-				disabled={pending !== null || live.status === 'finished'}
-			>
-				{seatedPlayers.length > 0 ? 'Relancer le tirage' : 'Tirer au sort'}
-			</button>
-		</div>
-	</div>
-	{#if !seatsOpen && seatedPlayers.length > 0}
-		<div class="card-body">
-			<p class="small muted" style="margin: 0;">
-				{seatedPlayers.map((player) => `${player.seat} ${formatPlayerName(player.name, player.entries, player.rebuyOrder)}`).join(' · ')}
-			</p>
-		</div>
-	{:else}
-		<div class="card-body">
-			{#if seatedPlayers.length === 0}
-				<p class="hint">
-					Tirez les places au sort avant le début de la soirée : chacun saura où s'asseoir, et
-					l'écran TV affichera le plan de table.
-				</p>
-			{:else}
-				<ol class="clean-list">
-					{#each seatedPlayers as player (player.id)}
-						<li>
-							<span class="cluster">
-								<span class="seat-badge">{player.seat}</span>
-								<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
-							</span>
-						</li>
-					{/each}
-				</ol>
-				<p class="hint" style="margin-top: 0.7rem;">
-					Un nouveau tirage remplace le précédent. L'écran TV bascule automatiquement sur le
-					plan de table tant que l'horloge n'a pas démarré.
-				</p>
-			{/if}
-		</div>
-	{/if}
 </section>
 
 <section class="card" style="margin-top: 1rem;">
@@ -388,6 +307,103 @@
 		{/if}
 	</div>
 </section>
+
+<section class="card" style="margin-top: 1rem;">
+	<div class="card-head">
+		<h2>Recaves</h2>
+		<span class="small muted">
+			{#if rebuyRemaining === 0 || live.status === 'finished'}
+				Recaves terminées
+			{:else}
+				Fin dans {formatClock(rebuyRemaining)}
+			{/if}
+		</span>
+	</div>
+	<form
+		class="card-body stack"
+		onsubmit={(event) => {
+			event.preventDefault();
+			const form = new FormData(event.currentTarget);
+			void act('set_rebuy_duration', undefined, Number(form.get('rebuy_duration')));
+		}}
+	>
+		<label class="field">
+			<span>Durée des recaves (minutes)</span>
+			<input type="number" name="rebuy_duration" min="0" step="1" value={live.rebuyDuration} required disabled={live.status === 'finished'} />
+			<span class="hint">Depuis le démarrage, pauses manuelles exclues. 0 pour aucune recave.</span>
+		</label>
+		<div class="cluster">
+			<button class="btn" type="submit" disabled={pending !== null || live.status === 'finished'}>
+				{busy('set_rebuy_duration') ? 'Enregistrement…' : 'Enregistrer la durée'}
+			</button>
+		</div>
+	</form>
+</section>
+
+<section class="card" style="margin-top: 1rem;">
+	<div class="card-head">
+		<h2>Placement à table</h2>
+		<div class="cluster">
+			{#if seatedPlayers.length > 0}
+				<button
+					class="btn btn-sm btn-ghost"
+					onclick={() => (seatsOpen = !seatsOpen)}
+					aria-expanded={seatsOpen}
+				>
+					{seatsOpen ? 'Réduire' : 'Afficher les places'}
+				</button>
+				<a
+					class="btn btn-sm btn-ghost"
+					href="/t/{live.id}/ecran?places=1"
+					target="_blank"
+					rel="noreferrer"
+				>
+					Afficher sur la TV
+				</a>
+			{/if}
+			<button
+				class="btn btn-sm btn-gold"
+				onclick={() => act('draw_seats')}
+				disabled={pending !== null || live.status === 'finished'}
+			>
+				{seatedPlayers.length > 0 ? 'Relancer le tirage' : 'Tirer au sort'}
+			</button>
+		</div>
+	</div>
+	{#if !seatsOpen && seatedPlayers.length > 0}
+		<div class="card-body">
+			<p class="small muted" style="margin: 0;">
+				{seatedPlayers.map((player) => `${player.seat} ${formatPlayerName(player.name, player.entries, player.rebuyOrder)}`).join(' · ')}
+			</p>
+		</div>
+	{:else}
+		<div class="card-body">
+			{#if seatedPlayers.length === 0}
+				<p class="hint">
+					Tirez les places au sort avant le début de la soirée : chacun saura où s'asseoir, et
+					l'écran TV affichera le plan de table.
+				</p>
+			{:else}
+				<ol class="clean-list">
+					{#each seatedPlayers as player (player.id)}
+						<li>
+							<span class="cluster">
+								<span class="seat-badge">{player.seat}</span>
+								<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
+							</span>
+						</li>
+					{/each}
+				</ol>
+				<p class="hint" style="margin-top: 0.7rem;">
+					Un nouveau tirage remplace le précédent. L'écran TV bascule automatiquement sur le
+					plan de table tant que l'horloge n'a pas démarré.
+				</p>
+			{/if}
+		</div>
+	{/if}
+</section>
+
+
 
 <p class="small muted" style="margin-top: 1rem;">
 	Astuce : gardez cet écran sur le téléphone de l'organisateur, et l'écran TV ouvert sur

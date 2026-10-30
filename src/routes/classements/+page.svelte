@@ -51,8 +51,8 @@
 						{#each data.points as player, index (player.id)}
 							<tr>
 								<td>
-									<span class="rank" class:rank-1={index === 0} class:rank-2={index === 1} class:rank-3={index === 2}>
-										{index + 1}
+									<span class="rank" class:rank-1={player.rank === 1} class:rank-2={player.rank === 2} class:rank-3={player.rank === 3}>
+										{player.rank}
 									</span>
 								</td>
 								<td><strong>{player.name}</strong></td>

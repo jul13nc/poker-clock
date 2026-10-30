@@ -10,6 +10,7 @@
 	const links = [
 		{ href: '/', label: 'Accueil' },
 		{ href: '/tournois', label: 'Tournois' },
+		{ href: '/blindes', label: 'Blindes' },
 		{ href: '/classements', label: 'Classements' },
 		{ href: '/joueurs', label: 'Joueurs' },
 		{ href: '/admin', label: 'Admin' }
@@ -49,7 +50,7 @@
 </main>
 
 <footer class="container small muted" style="padding: 0 0 2rem;">
-	{data.season.name} · {formatDateFr(data.season.starts_on)} → {formatDateFr(data.season.ends_on)}
+	{data.season?.name} · {formatDateFr(data.season?.starts_on ?? '')} → {formatDateFr(data.season?.ends_on ?? '')}
 	· Blindes, horloge, championnat et 7/2.
 </footer>
 {/if}

@@ -3,8 +3,8 @@ import type { Actions, PageServerLoad } from './$types';
 import { ensureSeason, parseJsonNumberList, updateSeason } from '#lib/server/data';
 import { getDb } from '#lib/server/db';
 import {
-	adminToken,
-	checkPin,
+	login,
+	revokeSession,
 	clearAdminCookie,
 	setAdminCookie
 } from '#lib/server/auth';
@@ -23,19 +23,18 @@ export const load: PageServerLoad = async ({ platform }) => {
 };
 
 export const actions: Actions = {
-	login: async ({ request, cookies, platform }) => {
+	login: async ({ request, cookies, platform, getClientAddress }) => {
 		const form = await request.formData();
 		const pin = String(form.get('pin') ?? '');
 
-		if (!checkPin(pin, platform?.env)) {
-			return fail(401, { error: 'PIN incorrect.' });
-		}
-
-		setAdminCookie(cookies, await adminToken(platform?.env));
+		const result = await login(getDb(platform), pin, getClientAddress(), platform?.env);
+		if ('error' in result) return fail(result.status, { error: result.error });
+		setAdminCookie(cookies, result.token);
 		throw redirect(303, '/admin');
 	},
 
-	logout: async ({ cookies }) => {
+	logout: async ({ cookies, platform }) => {
+		await revokeSession(getDb(platform), cookies.get('pc_admin'), platform?.env);
 		clearAdminCookie(cookies);
 		throw redirect(303, '/');
 	},

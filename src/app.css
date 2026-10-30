@@ -679,6 +679,17 @@ table.table {
 
 /* ---------- Screen / clock ---------- */
 
+.screen-connection {
+	position: fixed;
+	top: 0;
+	right: 0;
+	z-index: 10;
+	padding: 0.2rem 0.6rem;
+	background: var(--red);
+	color: var(--bg);
+	font-size: 0.75rem;
+}
+
 .screen-body {
 	min-height: 100vh;
 	height: 100vh;

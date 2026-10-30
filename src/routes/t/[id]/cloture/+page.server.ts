@@ -9,6 +9,7 @@ import { getDb } from '#lib/server/db';
 import { assignPoints, DEFAULT_POINTS_SCALE } from '#lib/domain/points';
 import { computePayouts, parsePayoutTableJson } from '#lib/domain/payout';
 import { DEFAULT_PAYOUT_TABLE } from '#lib/domain/defaults';
+import { CommandError, commitCommand, replayed } from '#lib/server/commands';
 
 export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	if (!locals.isAdmin) throw redirect(303, '/admin');
@@ -16,7 +17,7 @@ export const load: PageServerLoad = async ({ params, platform, locals }) => {
 	const tournament = await getTournament(db, params.id);
 	if (!tournament) error(404, 'Tournoi introuvable.');
 	const participants = await getParticipants(db, params.id);
-	return { tournament, participants };
+	return { tournament, participants, commandId: crypto.randomUUID() };
 };
 
 export const actions: Actions = {
@@ -31,6 +32,15 @@ export const actions: Actions = {
 		if (count === 0) return fail(400, { error: 'Aucun participant.' });
 
 		const form = await request.formData();
+		const meta = { commandId: String(form.get('command_id') ?? ''), expectedRevision: Number(form.get('revision')) };
+		if (!/^[\w-]{16,100}$/.test(meta.commandId) || !Number.isSafeInteger(meta.expectedRevision) || meta.expectedRevision < 0) return fail(400, { error: 'Commande de clôture invalide.' });
+		const payload = JSON.stringify({ action: 'close', ranks: [...form.entries()].filter(([key]) => key.startsWith('rank_')).sort(([a], [b]) => a.localeCompare(b)) });
+		try {
+			if (await replayed(db, params.id, meta, payload)) throw redirect(303, `/t/${params.id}/resultats`);
+		} catch (error) {
+			if (error instanceof CommandError) return fail(error.status, { error: error.message });
+			throw error;
+		}
 		const rankById = new Map<string, number>();
 
 		for (const participant of participants) {
@@ -87,7 +97,11 @@ export const actions: Actions = {
 		statements.push(
 			db.prepare("UPDATE tournaments SET status = 'finished' WHERE id = ?").bind(params.id)
 		);
-		await db.batch(statements);
+		try { await commitCommand(db, params.id, meta, payload, statements); }
+		catch (error) {
+			if (error instanceof CommandError) return fail(error.status, { error: error.message });
+			throw error;
+		}
 
 		throw redirect(303, `/t/${params.id}/resultats`);
 	}

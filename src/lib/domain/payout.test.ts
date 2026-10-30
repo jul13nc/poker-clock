@@ -3,6 +3,17 @@ import { computePayouts, parsePayoutTable } from './payout';
 import { DEFAULT_PAYOUT_TABLE } from './defaults';
 
 describe('computePayouts', () => {
+	it('garantit les invariants sur petits pools décimaux et nombreuses places', () => {
+		const table = { '10': { '1': 0, '2': 5, '3': 5 } };
+		for (let cents = 1; cents < 2000; cents++) {
+			const payouts = computePayouts(3, 1, cents / 100, table);
+			expect(payouts.every((p) => Number.isFinite(p.amount) && p.amount >= 0)).toBe(true);
+			expect(payouts.reduce((sum, p) => sum + Math.round(p.amount * 100), 0)).toBe(cents);
+		}
+	});
+	it('refuse la table qui produisait un gain négatif', () => {
+		expect(() => computePayouts(2, 5, 10, { '50': { '1': 30, '2': 100 } })).toThrow();
+	});
 	it('utilise la ligne exacte de la table', () => {
 		const payouts = computePayouts(5, 5, 10, DEFAULT_PAYOUT_TABLE);
 		expect(payouts.map((line) => line.amount)).toEqual([30, 20]);
@@ -42,6 +53,9 @@ describe('computePayouts', () => {
 });
 
 describe('parsePayoutTable', () => {
+	it('refuse dépassement du pool, places extrêmes et clés ambiguës', () => {
+		for (const value of ['{"50":{"1":30,"2":100}}', '{"50":{"1000000000":50}}', '{"50":{"01":50}}', '{"050":{"1":50}}', '{"50":{"1":49}}']) expect(parsePayoutTable(value)).toBeNull();
+	});
 	it('accepte la table JSON fournie', () => {
 		const table = parsePayoutTable(
 			'{"50":{"1":30,"2":20},"70":{"1":40,"2":20,"3":10}}'

@@ -1,5 +1,4 @@
--- Schéma initial consolidé : anciennes migrations 0001 à 0006.
--- Voir migrations/README.md pour les bases déjà initialisées.
+-- Schéma initial complet pour une base neuve.
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE players (
@@ -31,6 +30,7 @@ CREATE TABLE blind_structures (
 
 CREATE TABLE tournaments (
 	id TEXT PRIMARY KEY,
+	revision INTEGER NOT NULL DEFAULT 0,
 	season_id TEXT NOT NULL REFERENCES seasons(id),
 	name TEXT NOT NULL,
 	played_at TEXT NOT NULL,
@@ -74,29 +74,67 @@ CREATE INDEX idx_tp_finish ON tournament_players (tournament_id, finish_rank);
 CREATE INDEX idx_tp_seat ON tournament_players (tournament_id, seat);
 CREATE UNIQUE INDEX idx_tp_rebuy_order ON tournament_players (tournament_id, rebuy_order);
 CREATE INDEX idx_h72_tournament ON hands_72 (tournament_id, player_id);
+CREATE UNIQUE INDEX idx_one_running_tournament ON tournaments(status) WHERE status = 'running';
+
+CREATE TABLE admin_sessions (
+	token_hash TEXT PRIMARY KEY,
+	expires_at INTEGER NOT NULL
+);
+CREATE INDEX idx_admin_sessions_expiry ON admin_sessions(expires_at);
+
+CREATE TABLE login_attempts (
+	bucket TEXT PRIMARY KEY,
+	attempts INTEGER NOT NULL,
+	expires_at INTEGER NOT NULL
+);
+
+CREATE TABLE tournament_commands (
+	tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+	command_id TEXT NOT NULL,
+	expected_revision INTEGER NOT NULL,
+	payload TEXT NOT NULL,
+	created_at INTEGER NOT NULL,
+	PRIMARY KEY(tournament_id, command_id)
+);
+
+CREATE TRIGGER command_revision_guard BEFORE INSERT ON tournament_commands
+BEGIN
+	SELECT CASE WHEN NOT EXISTS (
+		SELECT 1 FROM tournaments WHERE id = NEW.tournament_id AND revision = NEW.expected_revision
+	) THEN RAISE(ABORT, 'revision_conflict') END;
+END;
+
+CREATE TRIGGER season_public_revision AFTER UPDATE ON seasons
+BEGIN
+	UPDATE tournaments SET revision = revision + 1 WHERE season_id = NEW.id;
+END;
+
+CREATE TRIGGER player_public_revision AFTER UPDATE OF name ON players
+BEGIN
+	UPDATE tournaments SET revision = revision + 1 WHERE id IN (
+		SELECT tournament_id FROM tournament_players WHERE player_id = NEW.id
+	);
+END;
 
 INSERT INTO blind_structures (id, name, levels_json, is_default) VALUES (
 	'default',
-	'Standard — 20 min',
+	'Standard — 15 min',
 	'[
-		{"sb":25,"bb":50,"ante":0,"duration":20},
-		{"sb":50,"bb":100,"ante":0,"duration":20},
-		{"sb":75,"bb":150,"ante":0,"duration":20},
-		{"sb":100,"bb":200,"ante":0,"duration":20},
-		{"sb":150,"bb":300,"ante":0,"duration":20},
-		{"sb":200,"bb":400,"ante":0,"duration":20},
-		{"sb":0,"bb":0,"ante":0,"duration":15,"break":true,"label":"Pause"},
-		{"sb":300,"bb":600,"ante":0,"duration":20},
-		{"sb":400,"bb":800,"ante":0,"duration":20},
-		{"sb":500,"bb":1000,"ante":0,"duration":20},
-		{"sb":700,"bb":1400,"ante":0,"duration":20},
-		{"sb":1000,"bb":2000,"ante":0,"duration":20},
-		{"sb":1500,"bb":3000,"ante":0,"duration":20},
-		{"sb":2000,"bb":4000,"ante":0,"duration":20},
-		{"sb":3000,"bb":6000,"ante":0,"duration":20},
-		{"sb":4000,"bb":8000,"ante":0,"duration":20},
-		{"sb":5000,"bb":10000,"ante":0,"duration":20},
-		{"sb":7000,"bb":14000,"ante":0,"duration":20}
+		{"sb":25,"bb":50,"ante":0,"duration":15},
+		{"sb":50,"bb":100,"ante":0,"duration":15},
+		{"sb":75,"bb":150,"ante":0,"duration":15},
+		{"sb":100,"bb":200,"ante":0,"duration":15},
+		{"sb":150,"bb":300,"ante":0,"duration":15},
+		{"sb":200,"bb":400,"ante":0,"duration":15},
+		{"sb":250,"bb":500,"ante":0,"duration":15},
+		{"sb":300,"bb":600,"ante":0,"duration":15},
+		{"sb":400,"bb":800,"ante":0,"duration":15},
+		{"sb":500,"bb":1000,"ante":0,"duration":15},
+		{"sb":600,"bb":1200,"ante":0,"duration":15},
+		{"sb":800,"bb":1600,"ante":0,"duration":15},
+		{"sb":1200,"bb":2400,"ante":0,"duration":15},
+		{"sb":1500,"bb":3000,"ante":0,"duration":15},
+		{"sb":2000,"bb":4000,"ante":0,"duration":15}
 	]',
 	1
 );

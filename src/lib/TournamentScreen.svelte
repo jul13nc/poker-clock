@@ -11,13 +11,18 @@
 	import type { TournamentState } from '#lib/domain/types';
 	import { formatChips, formatEuro, formatPlayerName } from '#lib/domain/format';
 	import { buildLiveRanking } from '#lib/domain/tournament';
+	import { ServerClock, TournamentSync } from '#lib/client/sync';
+	import { keepScreenAwake } from '#lib/client/screen';
 
-	let { tournament, poll = true }: { tournament: TournamentState; poll?: boolean } = $props();
+	let { tournament, poll = true, timeSource }: { tournament: TournamentState; poll?: boolean; timeSource?: ServerClock } = $props();
 
 	// svelte-ignore state_referenced_locally
 	let live = $state<TournamentState>(tournament);
 	let now = $state(Date.now());
 	let soundEnabled = $state(false);
+	let connected = $state(true);
+	let lastSync = $state<number | null>(null);
+	const localClock = new ServerClock();
 
 	// « auto » : les places s'affichent tant que l'horloge n'a pas démarré.
 	let viewMode = $state<'auto' | 'clock' | 'seats'>(
@@ -28,7 +33,6 @@
 	let lastLevel = -1;
 	// svelte-ignore state_referenced_locally
 	let lastTournamentId = tournament.id;
-	let wakeLock: { release: () => Promise<void> } | null = null;
 
 	const view = $derived(computeClock(live.levels, live.clock, now));
 	const rebuyRemaining = $derived(rebuyRemainingMs(live.rebuyDuration, live.clock, now));
@@ -72,27 +76,19 @@
 	});
 
 	$effect(() => {
+		const source = timeSource ?? localClock;
 		const tick = setInterval(() => {
-			now = Date.now();
+			now = source.now();
 		}, 250);
+		return () => clearInterval(tick);
+	});
 
-		const refresh = poll ? setInterval(async () => {
-			try {
-				const response = await fetch(`/api/tournaments/${live.id}/state`, {
-					cache: 'no-store'
-				});
-				if (response.ok) {
-					live = (await response.json()) as TournamentState;
-				}
-			} catch {
-				// hors ligne : l'horloge continue de tourner localement
-			}
-		}, 4000) : null;
-
-		return () => {
-			clearInterval(tick);
-			if (refresh !== null) clearInterval(refresh);
-		};
+	$effect(() => {
+		if (!poll) return;
+		const sync = new TournamentSync(`/api/tournaments/${tournament.id}/state`, tournament,
+			(next) => { if (next) live = next; },
+			(status) => { connected = status.connected; lastSync = status.lastSync; localClock.calibrate(sync.clock.now(), performance.now()); });
+		return sync.start();
 	});
 
 	$effect(() => {
@@ -104,13 +100,10 @@
 	});
 
 	$effect(() => {
-		void keepAwake();
-		const onVisibility = () => {
-			if (document.visibilityState === 'visible') void keepAwake();
-		};
-		document.addEventListener('visibilitychange', onVisibility);
-		return () => document.removeEventListener('visibilitychange', onVisibility);
+		try { soundEnabled = localStorage.getItem('pc_sound') === 'true'; } catch { /* stockage facultatif */ }
+		return () => { void audio?.close(); };
 	});
+	$effect(() => poll ? keepScreenAwake() : undefined);
 
 	function enableSound() {
 		if (!audio) {
@@ -118,11 +111,14 @@
 		}
 		void audio.resume();
 		soundEnabled = true;
+		try { localStorage.setItem('pc_sound', 'true'); } catch { /* stockage facultatif */ }
 		beep(1);
 	}
 
 	function beep(times: number) {
-		if (!audio) return;
+		if (!soundEnabled) return;
+		if (!audio) audio = new AudioContext();
+		if (audio.state !== 'running') return;
 		for (let i = 0; i < times; i++) {
 			const oscillator = audio.createOscillator();
 			const gain = audio.createGain();
@@ -136,24 +132,14 @@
 		}
 	}
 
-	async function keepAwake() {
-		const nav = navigator as Navigator & {
-			wakeLock?: { request(type: 'screen'): Promise<{ release: () => Promise<void> }> };
-		};
-		if (!nav.wakeLock) return;
-		try {
-			wakeLock = await nav.wakeLock.request('screen');
-		} catch {
-			// certains navigateurs refusent sans interaction
-		}
-	}
-
 	async function toggleFullscreen() {
+		try {
 		if (document.fullscreenElement) {
 			await document.exitFullscreen();
 		} else {
 			await document.documentElement.requestFullscreen();
 		}
+		} catch { /* Le navigateur peut refuser le plein écran. */ }
 	}
 </script>
 
@@ -277,6 +263,7 @@
 	{/if}
 
 	<div class="screen-foot">
+		{#if poll && !connected}<span title={lastSync ? new Date(lastSync).toLocaleTimeString('fr-FR') : 'Jamais synchronisé'}>Hors ligne · dernière horloge connue</span>{/if}
 		<span>
 			{live.players.length} joueur{live.players.length > 1 ? 's' : ''}
 			· buy-in {live.buyIn} €
