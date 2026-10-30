@@ -1,7 +1,6 @@
 import type { PageServerLoad } from './$types';
-import { ensureSeason, getStandings72, getStandingsPoints } from '#lib/server/data';
+import { ensureSeason, getStandings72, getStandingsPoints, parseJsonNumberList } from '#lib/server/data';
 import { getDb } from '#lib/server/db';
-import { parseJsonNumberList } from '#lib/server/data';
 import { DEFAULT_POINTS_SCALE } from '#lib/domain/points';
 
 export const load: PageServerLoad = async ({ platform }) => {

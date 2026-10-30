@@ -4,8 +4,7 @@ import {
 	getParticipants,
 	getStandingsPointsExcluding,
 	getStandingsPoints,
-	getTournament,
-	parseJsonNumberList
+	getTournament
 } from '#lib/server/data';
 import { getDb } from '#lib/server/db';
 import { formatEuro } from '#lib/domain/format';
