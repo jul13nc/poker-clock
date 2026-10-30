@@ -102,7 +102,7 @@
 		<p class="muted">{live.name} · {live.multiplier === 2 ? 'journée double' : 'journée normale'}</p>
 	</div>
 	<div class="cluster">
-		<a class="btn" href="/t/{live.id}/ecran" target="_blank" rel="noreferrer">Ouvrir l'écran TV</a>
+		<a class="btn" href="/ecran" target="_blank" rel="noreferrer">Ouvrir l'écran TV</a>
 		<a class="btn btn-gold" href="/t/{live.id}/cloture">Clôturer</a>
 	</div>
 </div>
@@ -391,5 +391,5 @@
 
 <p class="small muted" style="margin-top: 1rem;">
 	Astuce : gardez cet écran sur le téléphone de l'organisateur, et l'écran TV ouvert sur
-	<a href="/t/{live.id}/ecran" target="_blank" rel="noreferrer">/t/{live.id}/ecran</a>. L'horloge se synchronise toutes les 3 secondes.
+	<a href="/ecran" target="_blank" rel="noreferrer">/ecran</a>. Cette URL fixe suit automatiquement la partie en cours.
 </p>

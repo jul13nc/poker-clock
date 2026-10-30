@@ -51,7 +51,7 @@
 				<div class="cluster">
 					<span class="small muted">Pool {formatEuro(tournament.buy_in * tournament.entries_count)}</span>
 					{#if tournament.status === 'running'}
-						<a class="btn btn-sm" href="/t/{tournament.id}/ecran">Écran</a>
+						<a class="btn btn-sm" href="/ecran">Écran</a>
 						<a class="btn btn-sm btn-gold" href="/t/{tournament.id}/controle">Contrôle</a>
 					{:else if tournament.status === 'finished'}
 						<a class="btn btn-sm" href="/t/{tournament.id}/resultats">Résultats</a>

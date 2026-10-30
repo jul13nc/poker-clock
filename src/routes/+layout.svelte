@@ -21,6 +21,9 @@
 	}
 </script>
 
+{#if /^\/ecran\/?$/.test(page.url.pathname) || /^\/t\/[^/]+\/ecran\/?$/.test(page.url.pathname)}
+	{@render children()}
+{:else}
 <div class="topbar">
 	<div class="container topbar-inner">
 		<a class="brand" href="/">
@@ -49,3 +52,4 @@
 	{data.season.name} · {formatDateFr(data.season.starts_on)} → {formatDateFr(data.season.ends_on)}
 	· Blindes, horloge, championnat et 7/2.
 </footer>
+{/if}

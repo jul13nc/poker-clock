@@ -136,7 +136,7 @@
 								{statusLabel(tournament.status)}
 							</span>
 							{#if tournament.status === 'running'}
-								<a class="btn btn-sm btn-gold" href="/t/{tournament.id}/ecran">Écran</a>
+								<a class="btn btn-sm btn-gold" href="/ecran">Écran</a>
 							{:else if tournament.status === 'finished'}
 								<a class="btn btn-sm" href="/t/{tournament.id}/resultats">Résultats</a>
 							{:else}

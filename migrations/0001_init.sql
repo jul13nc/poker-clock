@@ -1,3 +1,5 @@
+-- Schéma initial consolidé : anciennes migrations 0001 à 0006.
+-- Voir migrations/README.md pour les bases déjà initialisées.
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE players (
@@ -15,6 +17,7 @@ CREATE TABLE seasons (
 	points_scale_json TEXT NOT NULL DEFAULT '[10,7,5,3,2,1]',
 	payout_json TEXT NOT NULL DEFAULT '{"50":{"1":30,"2":20},"60":{"1":40,"2":20},"70":{"1":40,"2":20,"3":10},"80":{"1":40,"2":30,"3":10},"90":{"1":50,"2":30,"3":10},"100":{"1":60,"2":30,"3":10},"110":{"1":70,"2":30,"3":10},"120":{"1":70,"2":40,"3":10},"130":{"1":80,"2":40,"3":10},"140":{"1":90,"2":40,"3":10}}',
 	default_buyin REAL NOT NULL DEFAULT 10,
+	default_stack INTEGER NOT NULL DEFAULT 10000,
 	rebuy_rule TEXT NOT NULL DEFAULT 'after' CHECK (rebuy_rule IN ('after', 'normal')),
 	created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -34,6 +37,8 @@ CREATE TABLE tournaments (
 	status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'running', 'finished')),
 	multiplier INTEGER NOT NULL DEFAULT 1 CHECK (multiplier IN (1, 2)),
 	buy_in REAL NOT NULL DEFAULT 10,
+	starting_stack INTEGER NOT NULL DEFAULT 10000,
+	rebuy_duration INTEGER NOT NULL DEFAULT 90 CHECK (rebuy_duration >= 0),
 	structure_json TEXT NOT NULL,
 	clock_json TEXT,
 	created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -43,7 +48,11 @@ CREATE TABLE tournament_players (
 	tournament_id TEXT NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
 	player_id TEXT NOT NULL REFERENCES players(id),
 	entries INTEGER NOT NULL DEFAULT 1,
+	rebuy_order INTEGER CHECK (rebuy_order > 0),
 	finish_rank INTEGER,
+	-- Renseigné à l'élimination ; le gagnant reste à NULL jusqu'à la clôture.
+	eliminated_at TEXT,
+	seat INTEGER,
 	points REAL,
 	points_rank INTEGER,
 	prize REAL,
@@ -61,6 +70,9 @@ CREATE TABLE hands_72 (
 
 CREATE INDEX idx_tournaments_season ON tournaments (season_id, played_at);
 CREATE INDEX idx_tp_player ON tournament_players (player_id);
+CREATE INDEX idx_tp_finish ON tournament_players (tournament_id, finish_rank);
+CREATE INDEX idx_tp_seat ON tournament_players (tournament_id, seat);
+CREATE UNIQUE INDEX idx_tp_rebuy_order ON tournament_players (tournament_id, rebuy_order);
 CREATE INDEX idx_h72_tournament ON hands_72 (tournament_id, player_id);
 
 INSERT INTO blind_structures (id, name, levels_json, is_default) VALUES (

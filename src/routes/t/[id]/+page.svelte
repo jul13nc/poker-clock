@@ -33,7 +33,7 @@
 	</div>
 	<div class="cluster">
 		{#if data.tournament.status === 'running'}
-			<a class="btn btn-gold" href="/t/{data.tournament.id}/ecran">Écran TV</a>
+			<a class="btn btn-gold" href="/ecran">Écran TV</a>
 			<a class="btn btn-primary" href="/t/{data.tournament.id}/controle">Contrôle</a>
 		{:else if data.tournament.status === 'finished'}
 			<a class="btn" href="/t/{data.tournament.id}/resultats">Résultats</a>

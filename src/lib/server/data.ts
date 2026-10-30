@@ -327,3 +327,16 @@ export async function buildTournamentState(
 		}))
 	};
 }
+
+/** Une partie démarrée est prioritaire sur les tournois en préparation. */
+export async function buildCurrentTournamentState(db: D1Database): Promise<TournamentState | null> {
+	const tournament = await queryOne<{ id: string }>(
+		db,
+		`SELECT id FROM tournaments
+		 WHERE status IN ('running', 'draft')
+		 ORDER BY CASE status WHEN 'running' THEN 0 ELSE 1 END,
+		          played_at DESC, created_at DESC, id DESC
+		 LIMIT 1`
+	);
+	return tournament ? buildTournamentState(db, tournament.id) : null;
+}

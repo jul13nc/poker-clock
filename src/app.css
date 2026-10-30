@@ -681,6 +681,8 @@ table.table {
 
 .screen-body {
 	min-height: 100vh;
+	height: 100vh;
+	height: 100dvh;
 	display: flex;
 	flex-direction: column;
 	background:
@@ -690,11 +692,13 @@ table.table {
 
 .screen-main {
 	flex: 1;
+	min-height: 0;
+	min-width: 0;
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: center;
-	padding: clamp(0.35rem, 1vh, 0.8rem) clamp(1rem, 3vw, 2.5rem) clamp(1rem, 3vw, 2.5rem);
+	padding: clamp(0.35rem, 1.5vh, 1rem) clamp(0.75rem, 2vw, 2rem);
 	text-align: center;
 	position: relative;
 }
@@ -708,10 +712,11 @@ table.table {
 
 .screen-stage {
 	flex: 1;
+	min-height: 0;
 	width: 100%;
 	display: grid;
-	grid-template-columns: minmax(210px, 1fr) minmax(0, 1.9fr) minmax(210px, 1fr);
-	gap: clamp(1rem, 2.4vw, 2.4rem);
+	grid-template-columns: minmax(0, 1.15fr) minmax(0, 2fr) minmax(0, 0.9fr);
+	gap: clamp(0.5rem, 1.5vw, 1.5rem);
 	align-items: center;
 	margin-top: 0;
 }
@@ -719,14 +724,17 @@ table.table {
 .screen-center {
 	text-align: center;
 	min-width: 0;
+	line-height: 1.25;
 }
 
 .screen-main-stage .screen-time {
-	font-size: clamp(3.5rem, 11vw, 9.5rem);
+	font-size: clamp(3rem, min(10vw, 22vh), 9.5rem);
 }
 
 .screen-side {
 	min-width: 0;
+	min-height: 0;
+	max-height: 100%;
 	display: flex;
 	flex-direction: column;
 	gap: clamp(0.4rem, 1.2vh, 0.8rem);
@@ -749,6 +757,8 @@ table.table {
 	display: flex;
 	flex-direction: column;
 	gap: clamp(0.2rem, 0.7vh, 0.45rem);
+	min-height: 0;
+	overflow-y: auto;
 }
 
 .live-row {
@@ -756,11 +766,11 @@ table.table {
 	grid-template-columns: 2ch minmax(0, 1fr) auto;
 	align-items: center;
 	gap: clamp(0.35rem, 0.9vw, 0.7rem);
-	padding: clamp(0.3rem, 0.8vh, 0.55rem) clamp(0.5rem, 1vw, 0.8rem);
+	padding: clamp(0.15rem, 0.6vh, 0.5rem) clamp(0.3rem, 0.7vw, 0.7rem);
 	border: 1px solid var(--line-soft);
 	border-radius: 10px;
 	background: rgba(23, 35, 28, 0.55);
-	font-size: clamp(0.8rem, 1.5vw, 1.25rem);
+	font-size: clamp(0.75rem, min(1.4vw, calc(48vh / var(--screen-rows, 10))), 1.25rem);
 	line-height: 1.25;
 }
 
@@ -794,11 +804,11 @@ table.table {
 
 .upcoming-row {
 	display: block;
-	padding: clamp(0.3rem, 0.8vh, 0.55rem) clamp(0.5rem, 1vw, 0.8rem);
+	padding: clamp(0.15rem, 0.6vh, 0.5rem) clamp(0.3rem, 0.7vw, 0.7rem);
 	border: 1px solid var(--line-soft);
 	border-radius: 10px;
 	background: rgba(23, 35, 28, 0.55);
-	font-size: clamp(0.9rem, 1.7vw, 1.4rem);
+	font-size: clamp(0.8rem, min(1.6vw, calc(48vh / var(--screen-rows, 8))), 1.4rem);
 	line-height: 1.25;
 	text-align: center;
 }
@@ -819,7 +829,11 @@ table.table {
 	font-size: clamp(0.8rem, 1.4vw, 1.1rem);
 }
 
-@media (max-width: 900px) {
+@media (max-width: 700px) and (orientation: portrait) {
+	.screen-body {
+		height: auto;
+	}
+
 	.screen-stage {
 		grid-template-columns: minmax(0, 1fr);
 	}
@@ -831,11 +845,11 @@ table.table {
 
 .screen-level {
 	color: var(--gold);
-	font-size: clamp(1.1rem, 2.6vw, 2rem);
+	font-size: clamp(0.95rem, min(2.3vw, 4.5vh), 2rem);
 	font-weight: 700;
 	letter-spacing: 0.16em;
 	text-transform: uppercase;
-	margin-top: clamp(0.6rem, 2vh, 1.6rem);
+	margin-top: clamp(0.3rem, 1vh, 0.8rem);
 }
 
 .screen-time {
@@ -855,15 +869,16 @@ table.table {
 }
 
 .screen-blinds {
-	font-size: clamp(2rem, 6.5vw, 5rem);
+	font-size: clamp(1.5rem, min(4.5vw, 9vh), 5rem);
 	font-weight: 700;
 	font-variant-numeric: tabular-nums;
 	letter-spacing: -0.02em;
+	overflow-wrap: anywhere;
 }
 
 .screen-ante {
 	color: var(--muted);
-	font-size: clamp(1rem, 2.4vw, 1.8rem);
+	font-size: clamp(0.85rem, min(2vw, 4vh), 1.8rem);
 	margin-top: 0.3rem;
 }
 
@@ -878,22 +893,23 @@ table.table {
 }
 
 .screen-foot {
+	flex-shrink: 0;
 	width: 100%;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: space-between;
-	gap: 1rem;
-	padding: 1rem clamp(1rem, 3vw, 2.5rem);
+	gap: 0.4rem 1rem;
+	padding: 0.35rem clamp(0.75rem, 2vw, 2rem);
 	border-top: 1px solid var(--line-soft);
 	color: var(--muted);
-	font-size: clamp(0.8rem, 1.4vw, 1rem);
+	font-size: clamp(0.7rem, 1.2vw, 1rem);
 }
 
 .screen-rebuy {
-	margin-top: clamp(0.8rem, 2.5vh, 1.6rem);
+	margin-top: clamp(0.4rem, 1.5vh, 1rem);
 	color: var(--muted);
-	font-size: clamp(1rem, 2.4vw, 1.8rem);
+	font-size: clamp(0.85rem, min(1.8vw, 3.8vh), 1.8rem);
 }
 
 .screen-rebuy strong {
@@ -910,10 +926,10 @@ table.table {
 	flex-wrap: wrap;
 	align-items: baseline;
 	justify-content: center;
-	gap: clamp(0.8rem, 4vw, 3rem);
-	margin-top: clamp(0.9rem, 2.5vh, 1.8rem);
+	gap: clamp(0.5rem, 2vw, 2rem);
+	margin-top: clamp(0.4rem, 1.5vh, 1.2rem);
 	color: var(--muted);
-	font-size: clamp(0.95rem, 2.1vw, 1.5rem);
+	font-size: clamp(0.85rem, min(1.8vw, 3.8vh), 1.5rem);
 }
 
 .screen-stats strong {
@@ -927,7 +943,9 @@ table.table {
 }
 
 .seat-board {
-	width: min(1100px, 92vw);
+	width: min(1400px, 100%);
+	min-height: 0;
+	overflow-y: auto;
 	margin-top: clamp(0.7rem, 2vh, 1.4rem);
 }
 
@@ -945,6 +963,7 @@ table.table {
 	border: 1px solid var(--line);
 	border-radius: 14px;
 	background: linear-gradient(160deg, var(--panel-2), var(--panel));
+	min-width: 0;
 }
 
 .seat-number {
@@ -960,6 +979,7 @@ table.table {
 .seat-name {
 	font-size: clamp(1rem, 2vw, 1.55rem);
 	font-weight: 600;
+	overflow-wrap: anywhere;
 }
 
 .seat-badge {
@@ -977,13 +997,54 @@ table.table {
 }
 
 .screen-controls {
-	position: fixed;
-	right: 1rem;
-	bottom: 1rem;
+	flex-shrink: 0;
 	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
 	gap: 0.5rem;
-	opacity: 0.25;
+	padding: 0.25rem clamp(0.75rem, 2vw, 2rem) 0.5rem;
+	opacity: 0.5;
 	transition: opacity 0.2s;
+}
+
+@media (max-height: 600px) and (orientation: landscape) {
+	.screen-main {
+		padding-top: 0.4rem;
+		padding-bottom: 0.4rem;
+	}
+
+	.screen-next {
+		margin-top: 0.4rem;
+		font-size: 0.8rem;
+	}
+
+	.screen-center > .muted,
+	.seat-legend {
+		font-size: 0.8rem;
+	}
+
+	.screen-controls .btn {
+		padding: 0.2rem 0.5rem;
+		font-size: 0.7rem;
+		min-height: 28px;
+	}
+
+	.seat-grid {
+		gap: 0.5rem;
+		grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	}
+
+	.seat-card {
+		padding: 0.4rem 0.6rem;
+	}
+
+	.seat-name {
+		font-size: 1rem;
+	}
+
+	.seat-number {
+		font-size: 1.5rem;
+	}
 }
 
 .screen-controls:hover,
