@@ -54,7 +54,7 @@ export const load: PageServerLoad = async ({ params, platform }) => {
 			playerId: participant.player_id,
 			name: participant.name,
 			entries: participant.entries,
-			rebuys: Math.max(0, participant.entries - 1),
+			rebuyOrder: participant.rebuy_order,
 			hands72: participant.hands72,
 			finishRank: participant.finish_rank,
 			dayPoints,

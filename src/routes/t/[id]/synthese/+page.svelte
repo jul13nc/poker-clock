@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { formatDateFr, formatEuro } from '#lib/domain/format';
+	import { formatDateFr, formatEuro, formatPlayerName } from '#lib/domain/format';
 
 	let { data }: { data: PageData } = $props();
 </script>
@@ -71,7 +71,6 @@
 					<tr>
 						<th>Place</th>
 						<th>Joueur</th>
-						<th class="num">Recaves</th>
 						<th class="num">7-2</th>
 						{#if data.finished}
 							<th class="num">Gain</th>
@@ -100,8 +99,7 @@
 									<span class="badge badge-green">En jeu</span>
 								{/if}
 							</td>
-							<td><strong>{row.name}</strong></td>
-							<td class="num">{row.rebuys}</td>
+							<td><strong>{formatPlayerName(row.name, row.entries, row.rebuyOrder)}</strong></td>
 							<td class="num">{row.hands72}</td>
 							{#if data.finished}
 								<td class="num">{row.prize ? formatEuro(row.prize) : '—'}</td>
@@ -162,7 +160,7 @@
 {/if}
 
 <p class="assumption" style="margin-top: 1.5rem;">
-	« Points du jour » suit le barème de la saison, recaves classées après les non-recavés.
+	« Points du jour » suit le barème de la saison. Avec la règle recave : R1 dernier, R2 avant-dernier, etc.
 	« Points généraux » additionne la journée au cumul de la saison, et « rang général » situe
 	le joueur dans le championnat à l'issue de cette soirée.
 </p>

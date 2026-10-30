@@ -121,7 +121,7 @@
 				<div class="card-head"><h2>Règles appliquées</h2></div>
 				<div class="card-body stack small muted">
 					<p><strong style="color: var(--text);">Points.</strong> {scaleText} points selon la place, multipliés par 2 lors d'une journée double.</p>
-					<p><strong style="color: var(--text);">Recaves.</strong> {data.season.rebuy_rule === 'after' ? 'Les joueurs ayant recavé sont classés après les non-recavés pour l’attribution des points.' : 'La recave ne change pas l’ordre d’attribution des points.'}</p>
+					<p><strong style="color: var(--text);">Recaves.</strong> {data.season.rebuy_rule === 'after' ? 'Les recavés sont classés après les non-recavés : R1 dernier, R2 avant-dernier, etc.' : 'La recave ne change pas l’ordre d’attribution des points.'}</p>
 					<p><strong style="color: var(--text);">Gains.</strong> Pool = buy-in × entrées (recaves incluses), réparti selon la table : {payoutSummary}.</p>
 					<p><strong style="color: var(--text);">7-2.</strong> Compteur séparé, saisi par l'organisateur, sans impact sur les points.</p>
 				</div>

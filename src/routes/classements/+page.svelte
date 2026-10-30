@@ -22,7 +22,7 @@
 <div class="notice notice-info" style="margin-bottom: 1.5rem;">
 	<strong>Barème :</strong> {scale} points selon la place.
 	{#if data.rebuyRule === 'after'}
-		Les joueurs ayant recavé sont classés après ceux n'ayant pas recavé pour l'attribution des points.
+		Les joueurs ayant recavé sont classés après les non-recavés : R1 dernier, R2 avant-dernier, etc.
 	{/if}
 	Une journée peut compter double. Les mains 7-2 sont saisies par l'organisateur et comptées séparément.
 </div>

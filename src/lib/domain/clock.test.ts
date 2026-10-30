@@ -5,6 +5,7 @@ import {
 	nextLevel,
 	pauseClock,
 	previousLevel,
+	rebuyRemainingMs,
 	resumeClock,
 	startClock
 } from './clock';
@@ -79,5 +80,34 @@ describe('commandes manuelles', () => {
 		const clock = addTime(startClock(T0), 5 * MIN)!;
 		const view = computeClock(levels, clock, T0 + 10 * MIN);
 		expect(view.remainingMs).toBe(15 * MIN);
+	});
+});
+
+describe('compte à rebours des recaves', () => {
+	it('attend le démarrage et respecte la durée configurée', () => {
+		expect(rebuyRemainingMs(90, null, T0)).toBe(90 * MIN);
+		expect(rebuyRemainingMs(45, startClock(T0), T0 + 10 * MIN)).toBe(35 * MIN);
+	});
+
+	it('gèle pendant une pause et déduit sa durée à la reprise', () => {
+		const paused = pauseClock(startClock(T0), T0 + 30 * MIN)!;
+		expect(rebuyRemainingMs(90, paused, T0 + 50 * MIN)).toBe(60 * MIN);
+		const resumed = resumeClock(paused, T0 + 50 * MIN)!;
+		expect(rebuyRemainingMs(90, resumed, T0 + 55 * MIN)).toBe(55 * MIN);
+	});
+
+	it('ignore les changements de niveau et le temps ajouté aux blindes', () => {
+		const next = nextLevel(levels, startClock(T0), T0 + MIN)!;
+		const previous = previousLevel(levels, next, T0 + MIN)!;
+		const adjusted = addTime(previous, 5 * MIN)!;
+		for (const clock of [next, previous, adjusted]) {
+			expect(rebuyRemainingMs(90, clock, T0 + MIN)).toBe(89 * MIN);
+		}
+	});
+
+	it('reste à zéro après expiration ou si les recaves sont désactivées', () => {
+		expect(rebuyRemainingMs(90, startClock(T0), T0 + 90 * MIN)).toBe(0);
+		expect(rebuyRemainingMs(90, startClock(T0), T0 + 100 * MIN)).toBe(0);
+		expect(rebuyRemainingMs(0, null, T0)).toBe(0);
 	});
 });

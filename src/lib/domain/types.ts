@@ -39,6 +39,8 @@ export type PlayerState = {
 	id: string;
 	name: string;
 	entries: number;
+	/** Ordre de la première recave dans le tournoi, inconnu pour les anciennes données. */
+	rebuyOrder: number | null;
 	hands72: number;
 	/** Place à table tirée au sort, sinon null. */
 	seat: number | null;
@@ -53,6 +55,8 @@ export type TournamentState = {
 	status: TournamentStatus;
 	multiplier: number;
 	buyIn: number;
+	/** Durée des recaves en minutes de jeu, pauses manuelles exclues. */
+	rebuyDuration: number;
 	startingStack: number;
 	totalChips: number;
 	remaining: number;
@@ -87,6 +91,7 @@ export type TournamentRow = {
 	status: TournamentStatus;
 	multiplier: number;
 	buy_in: number;
+	rebuy_duration: number;
 	starting_stack: number;
 	structure_json: string;
 	clock_json: string | null;
@@ -105,6 +110,7 @@ export type Participant = {
 	player_id: string;
 	name: string;
 	entries: number;
+	rebuy_order: number | null;
 	finish_rank: number | null;
 	points: number | null;
 	points_rank: number | null;

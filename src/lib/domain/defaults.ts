@@ -3,6 +3,9 @@ import type { PayoutTable } from './payout';
 /** Buy-in par défaut d'une soirée. */
 export const DEFAULT_BUYIN = 10;
 
+/** Durée des recaves en minutes à partir du démarrage du tournoi. */
+export const DEFAULT_REBUY_DURATION = 90;
+
 /**
  * Table des gains par montant total misé (buy-in × entrées, recaves incluses).
  * Les clés sont des pools en euros, en multiples de 10.

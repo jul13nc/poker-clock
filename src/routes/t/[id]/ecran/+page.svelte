@@ -6,10 +6,11 @@
 		formatAnte,
 		formatBlinds,
 		formatClock,
-		levelLabel
+		levelLabel,
+		rebuyRemainingMs
 	} from '#lib/domain/clock';
 	import type { TournamentState } from '#lib/domain/types';
-	import { formatChips, formatEuro } from '#lib/domain/format';
+	import { formatChips, formatEuro, formatPlayerName } from '#lib/domain/format';
 	import { buildLiveRanking } from '#lib/domain/tournament';
 
 	let { data }: { data: PageData } = $props();
@@ -29,6 +30,7 @@
 	let wakeLock: { release: () => Promise<void> } | null = null;
 
 	const view = $derived(computeClock(live.levels, live.clock, now));
+	const rebuyRemaining = $derived(rebuyRemainingMs(live.rebuyDuration, live.clock, now));
 
 	const leader72 = $derived(
 		[...live.players].sort((a, b) => b.hands72 - a.hands72)[0] ?? null
@@ -159,7 +161,7 @@
 						{#each seated as player (player.id)}
 							<div class="seat-card">
 								<span class="seat-number">{player.seat}</span>
-								<span class="seat-name">{player.name}</span>
+								<span class="seat-name">{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
 							</div>
 						{/each}
 					</div>
@@ -182,7 +184,7 @@
 						{#each liveRanking as row (row.place)}
 							<li class="live-row" class:is-empty={row.player === null}>
 								<span class="live-place">{row.place}</span>
-								<span class="live-name">{row.player?.name ?? '—'}</span>
+								<span class="live-name">{row.player ? formatPlayerName(row.player.name, row.player.entries, row.player.rebuyOrder) : '—'}</span>
 								{#if row.prize > 0}
 									<span class="live-prize">{formatEuro(row.prize)}</span>
 								{/if}
@@ -214,16 +216,20 @@
 							<div class="screen-ante">{formatAnte(view.level)}</div>
 						{/if}
 
-						<div class="bar">
-							<div class="bar-fill" style:width="{(view.progress * 100).toFixed(2)}%"></div>
-						</div>
-
 						{#if view.status === 'finished'}
 							<div class="screen-next">
 								<strong>Horloge terminée</strong> — clôturez le tournoi
 							</div>
 						{/if}
 					{/if}
+
+					<div class="screen-rebuy" class:is-closed={rebuyRemaining === 0 || live.status === 'finished'}>
+						{#if rebuyRemaining === 0 || live.status === 'finished'}
+							Recaves terminées
+						{:else}
+							Fin des recaves dans <strong>{formatClock(rebuyRemaining)}</strong>
+						{/if}
+					</div>
 
 					{#if live.status === 'finished'}
 						<div class="screen-stats">
@@ -266,7 +272,7 @@
 			· {live.players.reduce((sum, player) => sum + player.entries, 0)} entrée{live.players.reduce((sum, player) => sum + player.entries, 0) > 1 ? 's' : ''}
 		</span>
 		{#if leader72 && leader72.hands72 > 0}
-			<span>7-2 : <strong style="color: var(--gold-soft);">{leader72.name}</strong> ({leader72.hands72})</span>
+			<span>7-2 : <strong style="color: var(--gold-soft);">{formatPlayerName(leader72.name, leader72.entries, leader72.rebuyOrder)}</strong> ({leader72.hands72})</span>
 		{/if}
 		<a class="hidden-link" href="/t/{live.id}/controle">Contrôle</a>
 	</div>

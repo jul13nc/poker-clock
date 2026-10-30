@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types';
+	import { DEFAULT_REBUY_DURATION } from '#lib/domain/defaults';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 </script>
@@ -54,6 +55,11 @@
 						required
 					/>
 					<span class="hint">Sert au calcul du stack moyen affiché en direct.</span>
+				</label>
+				<label class="field">
+					<span>Durée des recaves (minutes)</span>
+					<input type="number" name="rebuy_duration" min="0" step="1" value={DEFAULT_REBUY_DURATION} required />
+					<span class="hint">Depuis le démarrage, pauses manuelles exclues. 0 pour aucune recave.</span>
 				</label>
 				<label class="field">
 					<span>Championnat</span>

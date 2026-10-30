@@ -37,3 +37,8 @@ export function formatNumber(value: number): string {
 export function formatChips(value: number): string {
 	return Math.round(value).toLocaleString('fr-FR');
 }
+
+/** L'ordre historique peut être inconnu pour une recave antérieure à son suivi. */
+export function formatPlayerName(name: string, entries: number, rebuyOrder: number | null): string {
+	return entries > 1 ? `${name} (R${rebuyOrder ?? '?'})` : name;
+}

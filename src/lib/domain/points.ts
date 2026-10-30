@@ -3,6 +3,7 @@ export type PointsRule = 'after' | 'normal';
 export type RankedEntry = {
 	playerId: string;
 	entries: number;
+	rebuyOrder: number | null;
 	finishRank: number;
 };
 
@@ -19,14 +20,21 @@ export const DEFAULT_POINTS_SCALE = [10, 7, 5, 3, 2, 1];
  *
  * Règle "after" (par défaut) : les joueurs n'ayant pas recavé sont classés
  * avant ceux ayant recavé, quel que soit leur classement réel dans le tournoi.
- * À l'intérieur de chaque groupe, l'ordre d'arrivée est conservé.
+ * Les recavés sont classés par ordre de première recave décroissant : R1
+ * termine dernier. L'ordre d'arrivée départage les anciennes recaves sans ordre.
  */
 export function pointsOrder<T extends RankedEntry>(entries: T[], rule: PointsRule): T[] {
 	const byFinish = [...entries].sort((a, b) => a.finishRank - b.finishRank);
 	if (rule === 'normal') return byFinish;
 	return [
 		...byFinish.filter((entry) => entry.entries <= 1),
-		...byFinish.filter((entry) => entry.entries > 1)
+		...byFinish.filter((entry) => entry.entries > 1).sort((a, b) => {
+			if (a.rebuyOrder === null || b.rebuyOrder === null) {
+				if (a.rebuyOrder === null && b.rebuyOrder === null) return a.finishRank - b.finishRank;
+				return a.rebuyOrder === null ? -1 : 1;
+			}
+			return b.rebuyOrder - a.rebuyOrder;
+		})
 	];
 }
 

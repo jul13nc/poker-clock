@@ -8,6 +8,7 @@ import {
 } from '#lib/server/data';
 import { getDb } from '#lib/server/db';
 import { totalDurationMs } from '#lib/domain/clock';
+import { DEFAULT_REBUY_DURATION } from '#lib/domain/defaults';
 
 export const load: PageServerLoad = async ({ platform, locals }) => {
 	if (!locals.isAdmin) throw redirect(303, '/admin');
@@ -45,6 +46,7 @@ export const actions: Actions = {
 		const playedAt = String(form.get('played_at') ?? '');
 		const buyIn = Number(form.get('buy_in'));
 		const startingStack = Number(form.get('starting_stack'));
+		const rebuyDuration = Number(form.get('rebuy_duration') ?? DEFAULT_REBUY_DURATION);
 		const multiplier = Number(form.get('multiplier'));
 		const structureId = String(form.get('structure_id') ?? '');
 		const playerIds = form.getAll('players').map(String);
@@ -64,6 +66,9 @@ export const actions: Actions = {
 		if (multiplier !== 1 && multiplier !== 2) {
 			return fail(400, { error: 'Multiplicateur invalide.' });
 		}
+		if (!Number.isSafeInteger(rebuyDuration) || rebuyDuration < 0) {
+			return fail(400, { error: 'La durée des recaves doit être un nombre entier positif ou nul.' });
+		}
 		if (playerIds.length < 2) {
 			return fail(400, { error: 'Sélectionnez au moins deux joueurs.' });
 		}
@@ -78,8 +83,8 @@ export const actions: Actions = {
 		await db
 			.prepare(
 				`INSERT INTO tournaments
-				 (id, season_id, name, played_at, status, multiplier, buy_in, starting_stack, structure_json)
-				 VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?)`
+				 (id, season_id, name, played_at, status, multiplier, buy_in, starting_stack, rebuy_duration, structure_json)
+				 VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?)`
 			)
 			.bind(
 				id,
@@ -89,6 +94,7 @@ export const actions: Actions = {
 				multiplier,
 				buyIn,
 				Math.round(startingStack),
+				rebuyDuration,
 				structure.levels_json
 			)
 			.run();

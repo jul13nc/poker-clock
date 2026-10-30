@@ -189,7 +189,7 @@ export async function getParticipants(
 ): Promise<Participant[]> {
 	return queryAll<Participant>(
 		db,
-		`SELECT tp.player_id, p.name, tp.entries, tp.finish_rank, tp.points,
+		`SELECT tp.player_id, p.name, tp.entries, tp.rebuy_order, tp.finish_rank, tp.points,
 		        tp.points_rank, tp.prize, tp.seat, tp.eliminated_at,
 		        COALESCE((
 		          SELECT SUM(h.count) FROM hands_72 h
@@ -305,6 +305,7 @@ export async function buildTournamentState(
 		status: tournament.status,
 		multiplier: tournament.multiplier,
 		buyIn: tournament.buy_in,
+		rebuyDuration: tournament.rebuy_duration,
 		startingStack: tournament.starting_stack,
 		totalChips: chips,
 		remaining,
@@ -318,6 +319,7 @@ export async function buildTournamentState(
 			id: participant.player_id,
 			name: participant.name,
 			entries: participant.entries,
+			rebuyOrder: participant.rebuy_order,
 			hands72: participant.hands72,
 			seat: participant.seat,
 			finishRank: participant.finish_rank,

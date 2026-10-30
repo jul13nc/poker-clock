@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { PageData } from './$types';
-	import { formatDateFr, formatEuro } from '#lib/domain/format';
+	import { formatDateFr, formatEuro, formatPlayerName } from '#lib/domain/format';
 
 	let { data }: { data: PageData } = $props();
 
@@ -77,7 +77,6 @@
 					<tr>
 						<th>Place</th>
 						<th>Joueur</th>
-						<th class="num">Recaves</th>
 						<th class="num">7-2</th>
 						<th class="num">Place championnat</th>
 						<th class="num">Points</th>
@@ -96,8 +95,7 @@
 									—
 								{/if}
 							</td>
-							<td><strong>{participant.name}</strong></td>
-							<td class="num">{Math.max(0, participant.entries - 1)}</td>
+							<td><strong>{formatPlayerName(participant.name, participant.entries, participant.rebuy_order)}</strong></td>
 							<td class="num">{participant.hands72}</td>
 							<td class="num">{participant.points_rank ?? '—'}</td>
 							<td class="num"><strong style="color: var(--gold-soft);">{participant.points ?? 0}</strong></td>
@@ -124,7 +122,7 @@
 							<span class="rank" class:rank-1={participant.finish_rank === 1} class:rank-2={participant.finish_rank === 2} class:rank-3={participant.finish_rank === 3}>
 								{participant.finish_rank}
 							</span>
-							<span>{participant.name}</span>
+							<span>{formatPlayerName(participant.name, participant.entries, participant.rebuy_order)}</span>
 						</span>
 						<strong style="color: var(--gold-soft);">{formatEuro(participant.prize ?? 0)}</strong>
 					</li>
@@ -135,7 +133,7 @@
 {/if}
 
 <p class="assumption" style="margin-top: 1.5rem;">
-	Les points sont attribués selon le barème de la saison. Les joueurs ayant recavé sont classés
-	après les non-recavés pour l'attribution des points. La colonne « place championnat » montre
+	Les points sont attribués selon le barème de la saison. Avec la règle recave, les recavés sont
+	classés après les non-recavés : R1 dernier, R2 avant-dernier, etc. La colonne « place championnat » montre
 	l'ordre utilisé pour le barème.
 </p>

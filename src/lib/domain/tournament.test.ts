@@ -12,6 +12,7 @@ const player = (id: string, finishRank: number | null): PlayerState => ({
 	id,
 	name: id,
 	entries: 1,
+	rebuyOrder: null,
 	hands72: 0,
 	seat: null,
 	finishRank,

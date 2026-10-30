@@ -29,6 +29,14 @@ export function playElapsedMs(clock: ClockState | null, now: number): number {
 	return Math.max(0, until - clock.startedAt - clock.pausedTotalMs);
 }
 
+export function rebuyRemainingMs(
+	durationMinutes: number,
+	clock: ClockState | null,
+	now: number
+): number {
+	return Math.max(0, durationMinutes * MINUTE_MS - playElapsedMs(clock, now));
+}
+
 export function computeClock(
 	levels: Level[],
 	clock: ClockState | null,

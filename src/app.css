@@ -890,20 +890,19 @@ table.table {
 	font-size: clamp(0.8rem, 1.4vw, 1rem);
 }
 
-.bar {
-	width: min(900px, 82vw);
-	height: 10px;
-	border-radius: 999px;
-	background: #16211a;
-	overflow: hidden;
+.screen-rebuy {
 	margin-top: clamp(0.8rem, 2.5vh, 1.6rem);
-	border: 1px solid var(--line-soft);
+	color: var(--muted);
+	font-size: clamp(1rem, 2.4vw, 1.8rem);
 }
 
-.bar-fill {
-	height: 100%;
-	background: linear-gradient(90deg, var(--green), var(--gold));
-	transition: width 0.4s linear;
+.screen-rebuy strong {
+	color: var(--gold-soft);
+	font-variant-numeric: tabular-nums;
+}
+
+.screen-rebuy.is-closed {
+	color: var(--gold);
 }
 
 .screen-stats {

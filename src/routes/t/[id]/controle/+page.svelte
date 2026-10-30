@@ -5,10 +5,11 @@
 		formatAnte,
 		formatBlinds,
 		formatClock,
-		levelLabel
+		levelLabel,
+		rebuyRemainingMs
 	} from '#lib/domain/clock';
 	import type { TournamentState } from '#lib/domain/types';
-	import { formatChips, formatEuro } from '#lib/domain/format';
+	import { formatChips, formatEuro, formatPlayerName } from '#lib/domain/format';
 
 	let { data }: { data: PageData } = $props();
 
@@ -23,6 +24,7 @@
 	let seatsOpen = $state(data.state.players.every((player) => player.seat === null));
 
 	const view = $derived(computeClock(live.levels, live.clock, now));
+	const rebuyRemaining = $derived(rebuyRemainingMs(live.rebuyDuration, live.clock, now));
 	const totalEntries = $derived(live.players.reduce((sum, player) => sum + player.entries, 0));
 	const pool = $derived(live.buyIn * totalEntries);
 	const activePlayers = $derived(live.players.filter((player) => player.finishRank === null));
@@ -172,6 +174,38 @@
 
 <section class="card" style="margin-top: 1rem;">
 	<div class="card-head">
+		<h2>Recaves</h2>
+		<span class="small muted">
+			{#if rebuyRemaining === 0 || live.status === 'finished'}
+				Recaves terminées
+			{:else}
+				Fin dans {formatClock(rebuyRemaining)}
+			{/if}
+		</span>
+	</div>
+	<form
+		class="card-body stack"
+		onsubmit={(event) => {
+			event.preventDefault();
+			const form = new FormData(event.currentTarget);
+			void act('set_rebuy_duration', undefined, Number(form.get('rebuy_duration')));
+		}}
+	>
+		<label class="field">
+			<span>Durée des recaves (minutes)</span>
+			<input type="number" name="rebuy_duration" min="0" step="1" value={live.rebuyDuration} required disabled={live.status === 'finished'} />
+			<span class="hint">Depuis le démarrage, pauses manuelles exclues. 0 pour aucune recave.</span>
+		</label>
+		<div class="cluster">
+			<button class="btn" type="submit" disabled={pending !== null || live.status === 'finished'}>
+				{busy('set_rebuy_duration') ? 'Enregistrement…' : 'Enregistrer la durée'}
+			</button>
+		</div>
+	</form>
+</section>
+
+<section class="card" style="margin-top: 1rem;">
+	<div class="card-head">
 		<h2>Placement à table</h2>
 		<div class="cluster">
 			{#if seatedPlayers.length > 0}
@@ -203,7 +237,7 @@
 	{#if !seatsOpen && seatedPlayers.length > 0}
 		<div class="card-body">
 			<p class="small muted" style="margin: 0;">
-				{seatedPlayers.map((player) => `${player.seat} ${player.name}`).join(' · ')}
+				{seatedPlayers.map((player) => `${player.seat} ${formatPlayerName(player.name, player.entries, player.rebuyOrder)}`).join(' · ')}
 			</p>
 		</div>
 	{:else}
@@ -219,11 +253,8 @@
 						<li>
 							<span class="cluster">
 								<span class="seat-badge">{player.seat}</span>
-								<span>{player.name}</span>
+								<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
 							</span>
-							{#if player.entries > 1}
-								<span class="badge badge-gold">{player.entries - 1} recave{player.entries - 1 > 1 ? 's' : ''}</span>
-							{/if}
 						</li>
 					{/each}
 				</ol>
@@ -263,14 +294,11 @@
 			{#each activePlayers as player (player.id)}
 				<div class="player-card">
 					<div class="player-card-head">
-						<span class="player-name">{player.name}</span>
+						<span class="player-name">{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
 						<div class="player-meta">
 							<span class="badge badge-green">En jeu</span>
 							{#if player.seat}
 								<span class="badge">Place {player.seat}</span>
-							{/if}
-							{#if player.entries > 1}
-								<span class="badge badge-gold">{player.entries - 1} recave{player.entries - 1 > 1 ? 's' : ''}</span>
 							{/if}
 							{#if player.hands72 > 0}
 								<span class="badge badge-green">{player.hands72} × 7-2</span>
@@ -330,12 +358,9 @@
 					<li>
 						<span class="cluster">
 							<span class="rank">{player.finishRank}</span>
-							<span>{player.name}</span>
+							<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
 							{#if player.seat}
 								<span class="badge">Place {player.seat}</span>
-							{/if}
-							{#if player.entries > 1}
-								<span class="badge badge-gold">{player.entries - 1} recave{player.entries - 1 > 1 ? 's' : ''}</span>
 							{/if}
 						</span>
 						<span class="cluster">

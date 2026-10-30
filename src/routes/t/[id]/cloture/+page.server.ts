@@ -52,6 +52,7 @@ export const actions: Actions = {
 			participants.map((participant) => ({
 				playerId: participant.player_id,
 				entries: participant.entries,
+				rebuyOrder: participant.rebuy_order,
 				finishRank: rankById.get(participant.player_id) ?? 0
 			})),
 			scale,

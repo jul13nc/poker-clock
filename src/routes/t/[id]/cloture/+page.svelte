@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ActionData, PageData } from './$types';
+	import { formatPlayerName } from '#lib/domain/format';
 
 	let { data, form }: { data: PageData; form: ActionData } = $props();
 
@@ -56,7 +57,7 @@
 	<strong>Rappel des règles.</strong>
 	Barème : {data.tournament.points_scale_json.replace(/[\[\]]/g, '')} points, ×{data.tournament.multiplier}.
 	{#if data.tournament.rebuy_rule === 'after'}
-		Les joueurs ayant recavé sont classés après les non-recavés pour l'attribution des points.
+		Les joueurs ayant recavé sont classés après les non-recavés : R1 dernier, R2 avant-dernier, etc.
 	{/if}
 	Gains : pool de {data.tournament.buy_in} € × entrées, réparti selon la table des gains de la saison (pools en multiples de 10 €).
 </div>
@@ -73,7 +74,6 @@
 					<thead>
 						<tr>
 							<th>Joueur</th>
-							<th class="num">Recaves</th>
 							<th class="num">7-2</th>
 							<th>Place</th>
 						</tr>
@@ -81,8 +81,7 @@
 					<tbody>
 						{#each ordered as participant (participant.player_id)}
 							<tr>
-								<td><strong>{participant.name}</strong></td>
-								<td class="num">{Math.max(0, participant.entries - 1)}</td>
+								<td><strong>{formatPlayerName(participant.name, participant.entries, participant.rebuy_order)}</strong></td>
 								<td class="num">{participant.hands72}</td>
 								<td>
 									<select name="rank_{participant.player_id}" style="max-width: 130px;">

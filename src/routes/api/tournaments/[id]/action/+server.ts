@@ -34,7 +34,8 @@ const LOCKED_ACTIONS = new Set([
 	'unrebuy',
 	'eliminate',
 	'cancel_elimination',
-	'draw_seats'
+	'draw_seats',
+	'set_rebuy_duration'
 ]);
 
 export const POST: RequestHandler = async ({ params, request, platform, locals }) => {
@@ -68,6 +69,21 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
 	}
 
 	switch (action) {
+		case 'set_rebuy_duration': {
+			const minutes = body.minutes;
+			if (typeof minutes !== 'number' || !Number.isSafeInteger(minutes) || minutes < 0) {
+				return json(
+					{ error: 'La durée des recaves doit être un nombre entier positif ou nul.' },
+					{ status: 400 }
+				);
+			}
+			await db
+				.prepare('UPDATE tournaments SET rebuy_duration = ? WHERE id = ?')
+				.bind(minutes, params.id)
+				.run();
+			break;
+		}
+
 		case 'start':
 			if (!clock) {
 				clock = startClock(now);
@@ -115,10 +131,18 @@ export const POST: RequestHandler = async ({ params, request, platform, locals }
 			await db
 				.prepare(
 					`UPDATE tournament_players
-					 SET entries = MAX(1, entries + ?)
+					 SET entries = MAX(1, entries + ?),
+					     rebuy_order = CASE
+					       WHEN ? = 1 AND entries = 1 THEN (
+					         SELECT COALESCE(MAX(rebuy_order), 0) + 1
+					         FROM tournament_players WHERE tournament_id = ?
+					       )
+					       WHEN ? = -1 AND entries <= 2 THEN NULL
+					       ELSE rebuy_order
+					     END
 					 WHERE tournament_id = ? AND player_id = ?`
 				)
-				.bind(delta, params.id, body.playerId)
+				.bind(delta, delta, params.id, delta, params.id, body.playerId)
 				.run();
 			// Une recave sur un joueur éliminé le remet en jeu.
 			if (action === 'rebuy' && participant.finish_rank !== null) {
