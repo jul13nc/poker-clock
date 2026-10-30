@@ -1,0 +1,33 @@
+{
+  "name": "poker-clock",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#lib": "./src/lib",
+    "#lib/*": "./src/lib/*"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "wrangler dev",
+    "deploy": "npm run build && wrangler deploy",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "db:migrate": "wrangler d1 migrations apply poker-clock-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply poker-clock-db --remote",
+    "prepare": "svelte-kit sync"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261029.1",
+    "@sveltejs/adapter-cloudflare": "^8.0.1",
+    "@sveltejs/kit": "^3.1.0",
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "svelte": "^5.57.3",
+    "svelte-check": "^4.7.7",
+    "typescript": "^6.0.3",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.155.0"
+  }
+}
