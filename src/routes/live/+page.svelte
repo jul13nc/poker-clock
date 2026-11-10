@@ -29,7 +29,6 @@
 	<div class="screen-body">
 		<div class="screen-main">
 			<div class="screen-level">En attente d'un tournoi</div>
-			<div class="screen-time">--:--</div>
 			<p class="muted">La prochaine partie s'affichera automatiquement ici.</p>
 		</div>
 	</div>
