@@ -23,7 +23,7 @@
 	}
 </script>
 
-{#if /^\/ecran\/?$/.test(page.url.pathname) || /^\/t\/[^/]+\/ecran\/?$/.test(page.url.pathname)}
+{#if /^\/live\/?$/.test(page.url.pathname) || /^\/t\/[^/]+\/ecran\/?$/.test(page.url.pathname)}
 	{@render children()}
 {:else}
 <div class="topbar">

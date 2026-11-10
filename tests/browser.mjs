@@ -32,7 +32,7 @@ try {
 	const errors = [];
 	tv.on('pageerror', (error) => errors.push(error.message));
 	await tv.addInitScript(() => { const original = Date.now; Date.now = () => original() + 300_000; });
-	await tv.goto(`${base}/ecran`);
+	await tv.goto(`${base}/live`);
 	await tv.getByText("En attente d'un tournoi").waitFor();
 	const players = Array.from({ length: 12 }, (_, i) => `INSERT INTO players(id,name) VALUES ('p${i}','Joueur ${i + 1}'); INSERT INTO tournament_players(tournament_id,player_id,seat) VALUES ('t','p${i}',${i + 1});`).join('');
 	sql(`INSERT INTO seasons(id,name,starts_on,ends_on) VALUES ('s','Saison test','2020-09-01','2021-06-30'); INSERT INTO tournaments(id,season_id,name,played_at,structure_json) SELECT 't','s','Partie 1','2026-10-30',levels_json FROM blind_structures LIMIT 1; ${players}`);
