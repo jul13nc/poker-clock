@@ -127,7 +127,7 @@ try {
 	assert.match(shareText, /7\/2 : /);
 	assert.equal(await admin.getByRole('link', { name: /Télécharger/i }).count(), 0);
 	await admin.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-	await admin.getByRole('button', { name: 'Copier pour WhatsApp', exact: true }).click();
+	await admin.getByRole('button', { name: 'Copier une synthèse des résultats', exact: true }).click();
 	await admin.getByRole('button', { name: 'Copié !', exact: true }).waitFor();
 	assert.equal(await admin.evaluate(() => navigator.clipboard.readText()), shareText);
 	console.log('Copie WhatsApp : texte classé, coupe, recaves, 7/2 et copie presse-papiers OK.');
