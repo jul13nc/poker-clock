@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PageData } from './$types';
 	import { formatDateFr, formatEuro, formatPlayerName } from '#lib/domain/format';
+	import WhatsappExport from '#lib/WhatsappExport.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -37,6 +38,7 @@
 		{#if data.isAdmin}
 			<a class="btn" href="/t/{data.tournament.id}/cloture">Modifier</a>
 		{/if}
+		<WhatsappExport href={`/t/${data.tournament.id}/whatsapp`} />
 	</div>
 </div>
 

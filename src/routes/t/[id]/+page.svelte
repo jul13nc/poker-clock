@@ -3,6 +3,7 @@
 	import type { PageData } from './$types';
 	import { formatDateFr, formatEuro, formatPlayerName } from '#lib/domain/format';
 	import { statusLabel } from '#lib/domain/status';
+	import WhatsappExport from '#lib/WhatsappExport.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -41,6 +42,7 @@
 		{:else}
 			<a class="btn btn-primary" href="/t/{data.tournament.id}/controle">Ouvrir le contrôle</a>
 		{/if}
+		<WhatsappExport href={`/t/${data.tournament.id}/whatsapp`} />
 	</div>
 </div>
 

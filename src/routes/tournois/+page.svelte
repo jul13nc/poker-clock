@@ -2,6 +2,7 @@
 	import type { PageData } from './$types';
 	import { formatDateFr, formatEuro } from '#lib/domain/format';
 	import { statusLabel } from '#lib/domain/status';
+	import WhatsappExport from '#lib/WhatsappExport.svelte';
 
 	let { data }: { data: PageData } = $props();
 </script>
@@ -50,6 +51,7 @@
 				</div>
 				<div class="cluster">
 					<span class="small muted">Pool {formatEuro(tournament.buy_in * tournament.entries_count)}</span>
+					<WhatsappExport href={`/t/${tournament.id}/whatsapp`} compact />
 					{#if tournament.status === 'running'}
 						<a class="btn btn-sm" href="/live">Écran</a>
 						<a class="btn btn-sm btn-gold" href="/t/{tournament.id}/controle">Contrôle</a>
