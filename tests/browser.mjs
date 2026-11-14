@@ -68,6 +68,14 @@ try {
 	await admin.getByRole('button', { name: 'Pause', exact: true }).click();
 	await tv.getByText('Niveau 1 · en pause', { exact: true }).waitFor({ timeout: 15000 });
 	await fits('Pause');
+	await admin.getByText('12 en jeu', { exact: false }).waitFor();
+	await admin.getByRole('button', { name: 'Éliminer', exact: true }).first().click();
+	await admin.getByText('11 en jeu', { exact: false }).waitFor();
+	const toast = admin.locator('.undo-toast');
+	await toast.getByRole('button', { name: 'Annuler', exact: true }).click();
+	await admin.getByText('12 en jeu', { exact: false }).waitFor();
+	await toast.waitFor({ state: 'detached' });
+	console.log('Contrôle : élimination puis annulation via le toast OK.');
 	const actionUrl = `${base}/api/tournaments/t/action`;
 	const stateUrl = `${base}/api/tournaments/t/state`;
 	let current = (await (await admin.request.get(stateUrl)).json()).state;
@@ -155,6 +163,13 @@ try {
 	const unchanged = (await (await admin.request.get(`${base}/api/tournaments/${createdId}/state`)).json()).state;
 	assert.deepEqual(unchanged.levels, created.levels);
 	console.log('Blindes : génération, création, modification, défaut, sélection tournoi et suppression sans effet sur tournoi OK.');
+	await admin.setViewportSize({ width: 390, height: 844 });
+	await admin.goto(`${base}/t/t/controle`);
+	await admin.locator('.mobile-dock').waitFor();
+	const dockHeights = await admin.locator('.mobile-dock .btn').evaluateAll((buttons) => buttons.map((button) => button.getBoundingClientRect().height));
+	assert.ok(dockHeights.length === 4 && dockHeights.every((height) => height >= 44), `Cibles tactiles du dock : ${dockHeights.join(', ')}`);
+	assert.equal(await admin.locator('.remote-clock').evaluate((element) => getComputedStyle(element).position), 'sticky');
+	console.log('Contrôle mobile : dock fixe, horloge collante et cibles tactiles OK.');
 	await admin.goto(`${base}/admin`);
 	await admin.getByRole('button', { name: /Déconnexion|Se déconnecter/ }).click();
 	await admin.goto(base);

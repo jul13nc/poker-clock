@@ -22,6 +22,8 @@
 	let connected = $state(true);
 	let lastSync = $state<number | null>(null);
 	let retryCommand = $state<{ action: string; playerId?: string; minutes?: number; commandId: string; expectedRevision: number } | null>(null);
+	let undo = $state<{ label: string; action: string; playerId?: string } | null>(null);
+	let undoTimer: ReturnType<typeof setTimeout> | null = null;
 	// svelte-ignore state_referenced_locally
 	const sync = new TournamentSync(`/api/tournaments/${data.state.id}/state`, data.state,
 		(next) => { if (next) live = next; },
@@ -82,6 +84,17 @@
 				sync.accept(payload, sent);
 				now = sync.clock.now();
 				if (action === 'draw_seats') seatsOpen = true;
+				navigator.vibrate?.(18);
+				if (action === 'eliminate' && playerId) {
+					const player = live.players.find((entry) => entry.id === playerId);
+					const rank = player?.finishRank;
+					const place = rank ? ` · ${rank === 1 ? '1er' : `${rank}e`}` : '';
+					announceUndo(`${playerLabel(playerId)} éliminé${place}`, 'cancel_elimination');
+				} else if (action === 'rebuy' && playerId) {
+					announceUndo(`Recave · ${playerLabel(playerId)}`, 'unrebuy', playerId);
+				} else if (action === 'unrebuy' && playerId) {
+					announceUndo(`Recave annulée · ${playerLabel(playerId)}`, 'rebuy', playerId);
+				}
 			}
 		} catch {
 			message = 'Réponse non reçue. Réessayez la même commande sans risque de double saisie.';
@@ -94,6 +107,33 @@
 	function busy(action: string, playerId?: string): boolean {
 		return pending === `${action}:${playerId ?? ''}`;
 	}
+
+	function playerLabel(playerId: string): string {
+		const player = live.players.find((entry) => entry.id === playerId);
+		return player ? formatPlayerName(player.name, player.entries, player.rebuyOrder) : 'Joueur';
+	}
+
+	function announceUndo(label: string, action: string, playerId?: string) {
+		undo = { label, action, playerId };
+		if (undoTimer) clearTimeout(undoTimer);
+		undoTimer = setTimeout(() => {
+			undo = null;
+			undoTimer = null;
+		}, 6000);
+	}
+
+	function undoLast() {
+		if (!undo || pending) return;
+		const command = undo;
+		if (undoTimer) clearTimeout(undoTimer);
+		undoTimer = null;
+		undo = null;
+		void act(command.action, command.playerId);
+	}
+
+	$effect(() => () => {
+		if (undoTimer) clearTimeout(undoTimer);
+	});
 </script>
 
 <svelte:head>
@@ -123,7 +163,7 @@
 {/if}
 
 <section class="remote-clock">
-	<div>
+	<div class="remote-main">
 		<div class="remote-level">
 			{view.status === 'idle' ? 'En attente' : levelLabel(view.level, view.index)}
 			{#if view.status === 'paused'} · pause{/if}
@@ -135,13 +175,15 @@
 			{#if formatAnte(view.level)} · {formatAnte(view.level)}{/if}
 		</div>
 	</div>
-	<div class="stack" style="gap: 0.3rem; text-align: right;">
+	<div class="remote-aside stack" style="gap: 0.3rem; text-align: right;">
 		<span class="small muted">
 			<strong style="color: var(--text);">{live.remaining}</strong> restant{live.remaining === 1 ? '' : 's'}
-			· stack moyen <strong style="color: var(--gold-soft);">{formatChips(live.averageStack)}</strong>
 		</span>
-		<span class="small muted">{totalEntries} entrées · pool {formatEuro(pool)}</span>
-		<span class="small muted">Prochain : {formatBlinds(view.next)}</span>
+		<span class="small muted remote-detail">
+			Stack moyen <strong style="color: var(--gold-soft);">{formatChips(live.averageStack)}</strong>
+		</span>
+		<span class="small muted remote-detail">{totalEntries} entrées · pool {formatEuro(pool)}</span>
+		<span class="small muted remote-detail">Prochain : {formatBlinds(view.next)}</span>
 	</div>
 </section>
 
@@ -150,31 +192,31 @@
 	<div class="card-body stack">
 		<div class="control-row">
 			{#if view.status === 'idle'}
-				<button class="btn btn-primary" onclick={() => act('start')} disabled={pending !== null}>
+				<button class="btn btn-primary dock-dup" onclick={() => act('start')} disabled={pending !== null}>
 					{busy('start') ? 'Démarrage…' : 'Démarrer'}
 				</button>
 			{:else if view.status === 'paused'}
-				<button class="btn btn-primary" onclick={() => act('resume')} disabled={pending !== null}>
+				<button class="btn btn-primary dock-dup" onclick={() => act('resume')} disabled={pending !== null}>
 					{busy('resume') ? '…' : 'Reprendre'}
 				</button>
 			{:else if view.status === 'running'}
-				<button class="btn btn-gold" onclick={() => act('pause')} disabled={pending !== null}>
+				<button class="btn btn-gold dock-dup" onclick={() => act('pause')} disabled={pending !== null}>
 					{busy('pause') ? '…' : 'Pause'}
 				</button>
 			{:else}
-				<a class="btn btn-primary" href="/t/{live.id}/cloture">Clôturer le tournoi</a>
+				<a class="btn btn-primary dock-dup" href="/t/{live.id}/cloture">Clôturer le tournoi</a>
 			{/if}
 
 			<button class="btn" onclick={() => act('prev')} disabled={pending !== null || view.status === 'idle'}>
 				← Niveau précédent
 			</button>
-			<button class="btn" onclick={() => act('next')} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
+			<button class="btn dock-dup" onclick={() => act('next')} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
 				Niveau suivant →
 			</button>
-			<button class="btn" onclick={() => act('add_time', undefined, 1)} disabled={pending !== null || view.status === 'idle'}>
+			<button class="btn dock-dup" onclick={() => act('add_time', undefined, 1)} disabled={pending !== null || view.status === 'idle'}>
 				+1 minute
 			</button>
-			<button class="btn" onclick={() => act('add_time', undefined, -1)} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
+			<button class="btn dock-dup" onclick={() => act('add_time', undefined, -1)} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
 				−1 minute
 			</button>
 		</div>
@@ -185,6 +227,40 @@
 		{/if}
 	</div>
 </section>
+
+<nav class="mobile-dock" aria-label="Commandes rapides">
+	{#if view.status === 'idle'}
+		<button class="btn btn-primary" onclick={() => act('start')} disabled={pending !== null}>
+			{busy('start') ? '…' : 'Démarrer'}
+		</button>
+	{:else if view.status === 'paused'}
+		<button class="btn btn-primary" onclick={() => act('resume')} disabled={pending !== null}>
+			{busy('resume') ? '…' : 'Reprendre'}
+		</button>
+	{:else if view.status === 'running'}
+		<button class="btn btn-gold" onclick={() => act('pause')} disabled={pending !== null}>
+			{busy('pause') ? '…' : 'Pause'}
+		</button>
+	{:else}
+		<a class="btn btn-primary" href="/t/{live.id}/cloture">Clôturer</a>
+	{/if}
+	<button class="btn" onclick={() => act('add_time', undefined, -1)} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
+		−1 min
+	</button>
+	<button class="btn" onclick={() => act('add_time', undefined, 1)} disabled={pending !== null || view.status === 'idle'}>
+		+1 min
+	</button>
+	<button class="btn" onclick={() => act('next')} disabled={pending !== null || view.status === 'idle' || view.status === 'finished'}>
+		Niv. →
+	</button>
+</nav>
+
+{#if undo}
+	<div class="undo-toast" role="status" aria-live="polite">
+		<span>{undo.label}</span>
+		<button class="btn btn-sm" onclick={undoLast}>Annuler</button>
+	</div>
+{/if}
 
 <section class="card" style="margin-top: 1rem;">
 	<div class="card-head">
@@ -363,7 +439,11 @@
 			{/if}
 			<button
 				class="btn btn-sm btn-gold"
-				onclick={() => act('draw_seats')}
+				onclick={() => {
+					if (seatedPlayers.length === 0 || confirm('Un nouveau tirage remplace le placement actuel. Continuer ?')) {
+						act('draw_seats');
+					}
+				}}
 				disabled={pending !== null || live.status === 'finished'}
 			>
 				{seatedPlayers.length > 0 ? 'Relancer le tirage' : 'Tirer au sort'}
@@ -409,3 +489,5 @@
 	Astuce : gardez cet écran sur le téléphone de l'organisateur, et l'écran TV ouvert sur
 	<a href="/live" target="_blank" rel="noreferrer">/live</a>. Cette URL fixe suit automatiquement la partie en cours.
 </p>
+
+<div class="dock-spacer" aria-hidden="true"></div>
