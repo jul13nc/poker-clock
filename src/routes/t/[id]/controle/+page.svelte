@@ -49,6 +49,35 @@
 			.sort((a, b) => (a.seat ?? 0) - (b.seat ?? 0))
 	);
 
+	type TabId = 'clock' | 'players' | 'rebuy' | 'seats';
+	const tabs: { id: TabId; label: string }[] = [
+		{ id: 'clock', label: 'Horloge' },
+		{ id: 'players', label: 'Joueurs' },
+		{ id: 'rebuy', label: 'Recave' },
+		{ id: 'seats', label: 'Table' }
+	];
+	const rebuyPresets = [0, 30, 60, 90, 120];
+	// Sur téléphone, onglet Joueurs dès que la partie a démarré, sinon Horloge.
+	// svelte-ignore state_referenced_locally
+	let activeTab = $state<TabId>(data.state.clock ? 'players' : 'clock');
+	let query = $state('');
+	let sheetPlayerId = $state<string | null>(null);
+
+	const normalizedQuery = $derived(query.trim().toLocaleLowerCase('fr'));
+	const shownPlayers = $derived.by(() => {
+		const needle = normalizedQuery;
+		return [...live.players]
+			.sort((a, b) => {
+				const aOut = a.finishRank !== null;
+				const bOut = b.finishRank !== null;
+				if (aOut !== bOut) return aOut ? 1 : -1;
+				if (aOut && bOut) return (b.finishRank ?? 0) - (a.finishRank ?? 0);
+				return 0;
+			})
+			.filter((player) => !needle || player.name.toLocaleLowerCase('fr').includes(needle));
+	});
+	const sheetPlayer = $derived(live.players.find((player) => player.id === sheetPlayerId) ?? null);
+
 	$effect(() => {
 		const tick = setInterval(() => {
 			now = sync.clock.now();
@@ -134,6 +163,60 @@
 	$effect(() => () => {
 		if (undoTimer) clearTimeout(undoTimer);
 	});
+
+	$effect(() => {
+		if (!sheetPlayerId) return;
+		function onKeydown(event: KeyboardEvent) {
+			if (event.key === 'Escape') closeSheet();
+		}
+		const previousOverflow = document.body.style.overflow;
+		document.body.style.overflow = 'hidden';
+		window.addEventListener('keydown', onKeydown);
+		return () => {
+			window.removeEventListener('keydown', onKeydown);
+			document.body.style.overflow = previousOverflow;
+		};
+	});
+
+	function selectTab(tab: TabId) {
+		activeTab = tab;
+	}
+
+	function tabKeydown(event: KeyboardEvent, index: number) {
+		const offsets: Record<string, number> = {
+			ArrowRight: 1,
+			ArrowLeft: -1,
+			Home: -index,
+			End: tabs.length - 1 - index
+		};
+		const offset = offsets[event.key];
+		if (offset === undefined) return;
+		event.preventDefault();
+		const target = (index + offset + tabs.length) % tabs.length;
+		selectTab(tabs[target].id);
+		const buttons = (event.currentTarget as HTMLElement).parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]');
+		buttons?.[target]?.focus();
+	}
+
+	function openSheet(playerId: string) {
+		sheetPlayerId = playerId;
+	}
+
+	function closeSheet() {
+		sheetPlayerId = null;
+	}
+
+	function sheetAction(action: string) {
+		const player = sheetPlayer;
+		closeSheet();
+		if (player) void act(action, player.id);
+	}
+
+	function setRebuyDuration(minutes: number) {
+		const duration = Math.max(0, Math.round(minutes));
+		if (duration === live.rebuyDuration || pending !== null || live.status === 'finished') return;
+		void act('set_rebuy_duration', undefined, duration);
+	}
 </script>
 
 <svelte:head>
@@ -162,32 +245,59 @@
 	<p class="notice notice-error" title={lastSync ? new Date(lastSync).toLocaleTimeString('fr-FR') : 'Jamais synchronisé'}>Connexion perdue · état potentiellement ancien.</p>
 {/if}
 
-<section class="remote-clock">
-	<div class="remote-main">
-		<div class="remote-level">
-			{view.status === 'idle' ? 'En attente' : levelLabel(view.level, view.index)}
-			{#if view.status === 'paused'} · pause{/if}
-			{#if view.status === 'finished'} · terminé{/if}
+<div class="control-top">
+	<section class="remote-clock">
+		<div class="remote-main">
+			<div class="remote-level">
+				{view.status === 'idle' ? 'En attente' : levelLabel(view.level, view.index)}
+				{#if view.status === 'paused'} · pause{/if}
+				{#if view.status === 'finished'} · terminé{/if}
+			</div>
+			<div class="remote-time">{view.status === 'idle' ? '--:--' : formatClock(view.remainingMs)}</div>
+			<div class="small muted">
+				{formatBlinds(view.level)}
+				{#if formatAnte(view.level)} · {formatAnte(view.level)}{/if}
+			</div>
 		</div>
-		<div class="remote-time">{view.status === 'idle' ? '--:--' : formatClock(view.remainingMs)}</div>
-		<div class="small muted">
-			{formatBlinds(view.level)}
-			{#if formatAnte(view.level)} · {formatAnte(view.level)}{/if}
+		<div class="remote-aside stack" style="gap: 0.3rem; text-align: right;">
+			<span class="small muted">
+				<strong style="color: var(--text);">{live.remaining}</strong> restant{live.remaining === 1 ? '' : 's'}
+			</span>
+			<span class="small muted remote-detail">
+				Stack moyen <strong style="color: var(--gold-soft);">{formatChips(live.averageStack)}</strong>
+			</span>
+			<span class="small muted remote-detail">{totalEntries} entrées · pool {formatEuro(pool)}</span>
+			<span class="small muted remote-detail">Prochain : {formatBlinds(view.next)}</span>
 		</div>
-	</div>
-	<div class="remote-aside stack" style="gap: 0.3rem; text-align: right;">
-		<span class="small muted">
-			<strong style="color: var(--text);">{live.remaining}</strong> restant{live.remaining === 1 ? '' : 's'}
-		</span>
-		<span class="small muted remote-detail">
-			Stack moyen <strong style="color: var(--gold-soft);">{formatChips(live.averageStack)}</strong>
-		</span>
-		<span class="small muted remote-detail">{totalEntries} entrées · pool {formatEuro(pool)}</span>
-		<span class="small muted remote-detail">Prochain : {formatBlinds(view.next)}</span>
-	</div>
-</section>
+	</section>
 
-<section class="card" style="margin-top: 1rem;">
+	<div class="mobile-tabs" role="tablist" aria-label="Sections de contrôle">
+		{#each tabs as tab, index (tab.id)}
+			<button
+				class="mobile-tab"
+				class:active={activeTab === tab.id}
+				role="tab"
+				id={`tab-${tab.id}`}
+				aria-selected={activeTab === tab.id}
+				aria-controls={`panel-${tab.id}`}
+				tabindex={activeTab === tab.id ? 0 : -1}
+				onclick={() => selectTab(tab.id)}
+				onkeydown={(event) => tabKeydown(event, index)}
+			>
+				{tab.label}
+			</button>
+		{/each}
+	</div>
+</div>
+
+<div
+	class="card control-panel panel-clock"
+	class:panel-active={activeTab === 'clock'}
+	id="panel-clock"
+	role="tabpanel"
+	aria-labelledby="tab-clock"
+	style="margin-top: 1rem;"
+>
 	<div class="card-head"><h2>Horloge</h2></div>
 	<div class="card-body stack">
 		<div class="control-row">
@@ -225,8 +335,26 @@
 				L'horloge a atteint la fin de la structure. Il reste à saisir le classement final et à clôturer.
 			</p>
 		{/if}
+		<div class="clock-stats mobile-only">
+			<div class="clock-stat">
+				<span class="small muted">Stack moyen</span>
+				<strong>{formatChips(live.averageStack)}</strong>
+			</div>
+			<div class="clock-stat">
+				<span class="small muted">Entrées</span>
+				<strong>{totalEntries}</strong>
+			</div>
+			<div class="clock-stat">
+				<span class="small muted">Pool</span>
+				<strong>{formatEuro(pool)}</strong>
+			</div>
+			<div class="clock-stat">
+				<span class="small muted">Prochain niveau</span>
+				<strong>{formatBlinds(view.next)}</strong>
+			</div>
+		</div>
 	</div>
-</section>
+</div>
 
 <nav class="mobile-dock" aria-label="Commandes rapides">
 	{#if view.status === 'idle'}
@@ -262,7 +390,14 @@
 	</div>
 {/if}
 
-<section class="card" style="margin-top: 1rem;">
+<div
+	class="card control-panel panel-players"
+	class:panel-active={activeTab === 'players'}
+	id="panel-players"
+	role="tabpanel"
+	aria-labelledby="tab-players"
+	style="margin-top: 1rem;"
+>
 	<div class="card-head">
 		<h2>Éliminations</h2>
 		<span class="small muted">
@@ -285,7 +420,20 @@
 			remet en jeu et recalcule les places.
 		</p>
 
-		<div class="player-grid">
+		<div class="mobile-only">
+			<label class="player-search-wrap">
+				<span class="visually-hidden">Rechercher un joueur</span>
+				<input
+					class="player-search"
+					type="search"
+					placeholder="Rechercher un joueur…"
+					autocomplete="off"
+					bind:value={query}
+				/>
+			</label>
+		</div>
+
+		<div class="player-grid desktop-only">
 			{#each activePlayers as player (player.id)}
 				<div class="player-card">
 					<div class="player-card-head">
@@ -343,48 +491,119 @@
 			{/each}
 		</div>
 
+		<div class="mobile-only">
+			{#if shownPlayers.length === 0}
+				<p class="hint">
+					{query.trim() ? `Aucun joueur ne correspond à « ${query.trim()} ».` : 'Aucun joueur dans ce tournoi.'}
+				</p>
+			{:else}
+				<ul class="player-rows" aria-label="Joueurs du tournoi">
+					{#each shownPlayers as player (player.id)}
+						{@const out = player.finishRank !== null}
+						<li class="player-row" class:out>
+							<button
+								class="player-row-main"
+								onclick={() => openSheet(player.id)}
+								aria-label={`Actions pour ${formatPlayerName(player.name, player.entries, player.rebuyOrder)}`}
+							>
+								<span class="player-row-rank">{out ? player.finishRank : '•'}</span>
+								<span class="player-row-body">
+									<span class="player-row-name">{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
+									<span class="player-row-meta">
+										{#if out}
+											<span class="badge">Éliminé</span>
+										{:else}
+											<span class="badge badge-green">En jeu</span>
+										{/if}
+										{#if player.seat}
+											<span class="badge">Place {player.seat}</span>
+										{/if}
+										{#if player.hands72 > 0}
+											<span class="badge badge-green">{player.hands72} × 7-2</span>
+										{/if}
+										{#if player.entries > 1}
+											<span class="badge">{player.entries} entrées</span>
+										{/if}
+									</span>
+								</span>
+								<span class="player-row-more" aria-hidden="true">⋯</span>
+							</button>
+							<div class="player-row-action">
+								{#if out}
+									<button
+										class="btn btn-sm"
+										onclick={() => act('rebuy', player.id)}
+										disabled={pending !== null || live.status === 'finished'}
+									>
+										Réintégrer
+									</button>
+								{:else}
+									<button
+										class="btn btn-sm btn-danger"
+										onclick={() => act('eliminate', player.id)}
+										disabled={pending !== null || activePlayers.length <= 1 || live.status === 'finished'}
+									>
+										Éliminer
+									</button>
+								{/if}
+							</div>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+
 		{#if eliminatedPlayers.length > 0}
-			<div class="divider"></div>
-			<h3 class="small muted">
-				{live.status === 'finished' ? 'Classement final' : 'Éliminés — du dernier sorti au premier'}
-			</h3>
-			<ul class="clean-list">
-				{#each eliminatedPlayers as player (player.id)}
-					<li>
-						<span class="cluster">
-							<span class="rank">{player.finishRank}</span>
-							<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
-							{#if player.seat}
-								<span class="badge">Place {player.seat}</span>
-							{/if}
-						</span>
-						<span class="cluster">
-							{#if player.hands72 > 0}
-								<span class="badge badge-green">{player.hands72} × 7-2</span>
-							{/if}
-							<button
-								class="btn btn-sm"
-								onclick={() => act('rebuy', player.id)}
-								disabled={pending !== null || live.status === 'finished'}
-							>
-								+ Recave (réintégrer)
-							</button>
-							<button
-								class="btn btn-sm btn-ghost"
-								onclick={() => act('hand72_add', player.id)}
-								disabled={pending !== null}
-							>
-								+ 7-2
-							</button>
-						</span>
-					</li>
-				{/each}
-			</ul>
+			<div class="desktop-only">
+				<div class="divider"></div>
+				<h3 class="small muted">
+					{live.status === 'finished' ? 'Classement final' : 'Éliminés — du dernier sorti au premier'}
+				</h3>
+				<ul class="clean-list">
+					{#each eliminatedPlayers as player (player.id)}
+						<li>
+							<span class="cluster">
+								<span class="rank">{player.finishRank}</span>
+								<span>{formatPlayerName(player.name, player.entries, player.rebuyOrder)}</span>
+								{#if player.seat}
+									<span class="badge">Place {player.seat}</span>
+								{/if}
+							</span>
+							<span class="cluster">
+								{#if player.hands72 > 0}
+									<span class="badge badge-green">{player.hands72} × 7-2</span>
+								{/if}
+								<button
+									class="btn btn-sm"
+									onclick={() => act('rebuy', player.id)}
+									disabled={pending !== null || live.status === 'finished'}
+								>
+									+ Recave (réintégrer)
+								</button>
+								<button
+									class="btn btn-sm btn-ghost"
+									onclick={() => act('hand72_add', player.id)}
+									disabled={pending !== null}
+								>
+									+ 7-2
+								</button>
+							</span>
+						</li>
+					{/each}
+				</ul>
+			</div>
 		{/if}
 	</div>
-</section>
+</div>
 
-<section class="card" style="margin-top: 1rem;">
+<div
+	class="card control-panel panel-rebuy"
+	class:panel-active={activeTab === 'rebuy'}
+	id="panel-rebuy"
+	role="tabpanel"
+	aria-labelledby="tab-rebuy"
+	style="margin-top: 1rem;"
+>
 	<div class="card-head">
 		<h2>Recaves</h2>
 		<span class="small muted">
@@ -395,8 +614,57 @@
 			{/if}
 		</span>
 	</div>
+	<div class="card-body stack mobile-only">
+		<div class="rebuy-current">
+			<span class="small muted">Durée des recaves</span>
+			<strong>{live.rebuyDuration} min</strong>
+			<span class="small muted">
+				{#if rebuyRemaining === 0 || live.status === 'finished'}
+					Recaves terminées
+				{:else}
+					Encore {formatClock(rebuyRemaining)}
+				{/if}
+			</span>
+		</div>
+		<div class="rebuy-presets" role="group" aria-label="Durées prédéfinies">
+			{#each rebuyPresets as minutes (minutes)}
+				<button
+					class="btn btn-sm"
+					class:btn-primary={live.rebuyDuration === minutes}
+					aria-pressed={live.rebuyDuration === minutes}
+					onclick={() => setRebuyDuration(minutes)}
+					disabled={pending !== null || live.status === 'finished'}
+				>
+					{minutes === 0 ? 'Aucune' : `${minutes} min`}
+				</button>
+			{/each}
+		</div>
+		<div class="rebuy-stepper">
+			<button
+				class="btn"
+				onclick={() => setRebuyDuration(live.rebuyDuration - 5)}
+				disabled={pending !== null || live.status === 'finished' || live.rebuyDuration <= 0}
+				aria-label="Retirer 5 minutes"
+			>
+				− 5 min
+			</button>
+			<span class="rebuy-value">{live.rebuyDuration} min</span>
+			<button
+				class="btn"
+				onclick={() => setRebuyDuration(live.rebuyDuration + 5)}
+				disabled={pending !== null || live.status === 'finished'}
+				aria-label="Ajouter 5 minutes"
+			>
+				+ 5 min
+			</button>
+		</div>
+		<p class="hint">
+			Depuis le démarrage, pauses manuelles exclues. 0 pour aucune recave. Le réglage
+			s'applique immédiatement.
+		</p>
+	</div>
 	<form
-		class="card-body stack"
+		class="card-body stack desktop-only"
 		onsubmit={(event) => {
 			event.preventDefault();
 			const form = new FormData(event.currentTarget);
@@ -414,9 +682,16 @@
 			</button>
 		</div>
 	</form>
-</section>
+</div>
 
-<section class="card" style="margin-top: 1rem;">
+<div
+	class="card control-panel panel-seats"
+	class:panel-active={activeTab === 'seats'}
+	id="panel-seats"
+	role="tabpanel"
+	aria-labelledby="tab-seats"
+	style="margin-top: 1rem;"
+>
 	<div class="card-head">
 		<h2>Placement à table</h2>
 		<div class="cluster">
@@ -481,7 +756,7 @@
 			{/if}
 		</div>
 	{/if}
-</section>
+</div>
 
 
 
@@ -491,3 +766,60 @@
 </p>
 
 <div class="dock-spacer" aria-hidden="true"></div>
+
+{#if sheetPlayer}
+	<button class="sheet-backdrop" type="button" aria-label="Fermer les actions" onclick={closeSheet}></button>
+	<div class="player-sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-title">
+		<div class="sheet-grab" aria-hidden="true"></div>
+		<div class="sheet-head">
+			<div>
+				<h2 id="sheet-title">{formatPlayerName(sheetPlayer.name, sheetPlayer.entries, sheetPlayer.rebuyOrder)}</h2>
+				<p class="small muted">
+					{sheetPlayer.finishRank !== null
+						? `Éliminé · ${sheetPlayer.finishRank === 1 ? '1er' : `${sheetPlayer.finishRank}e`}`
+						: 'En jeu'}
+					{sheetPlayer.seat ? ` · place ${sheetPlayer.seat}` : ''}
+					{sheetPlayer.entries > 1 ? ` · ${sheetPlayer.entries} entrées` : ''}
+				</p>
+			</div>
+			<button class="btn btn-sm btn-ghost" onclick={closeSheet}>Fermer</button>
+		</div>
+		<div class="sheet-actions">
+			{#if sheetPlayer.finishRank === null}
+				<button
+					class="btn btn-danger"
+					onclick={() => sheetAction('eliminate')}
+					disabled={pending !== null || activePlayers.length <= 1 || live.status === 'finished'}
+				>
+					Éliminer
+				</button>
+				<button class="btn" onclick={() => sheetAction('rebuy')} disabled={pending !== null || live.status === 'finished'}>
+					+ Recave
+				</button>
+				<button
+					class="btn btn-ghost"
+					onclick={() => sheetAction('unrebuy')}
+					disabled={pending !== null || sheetPlayer.entries <= 1 || live.status === 'finished'}
+				>
+					− Recave
+				</button>
+			{:else}
+				<button
+					class="btn btn-primary"
+					onclick={() => sheetAction('rebuy')}
+					disabled={pending !== null || live.status === 'finished'}
+				>
+					Réintégrer (+ recave)
+				</button>
+			{/if}
+			<button class="btn" onclick={() => sheetAction('hand72_add')} disabled={pending !== null}>+ 7-2</button>
+			<button
+				class="btn btn-ghost"
+				onclick={() => sheetAction('hand72_remove')}
+				disabled={pending !== null || sheetPlayer.hands72 <= 0}
+			>
+				− 7-2
+			</button>
+		</div>
+	</div>
+{/if}
