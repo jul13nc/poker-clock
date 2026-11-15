@@ -36,7 +36,7 @@
 		{#if data.points.length === 0}
 			<div class="empty">Aucun résultat pour le moment.</div>
 		{:else}
-			<div class="table-wrap">
+			<div class="table-wrap desktop-only">
 				<table class="table">
 					<thead>
 						<tr>
@@ -64,6 +64,23 @@
 					</tbody>
 				</table>
 			</div>
+			<div class="leaderboard-cards mobile-only">
+				{#each data.points as player (player.id)}
+					<article class="leaderboard-card">
+						<div class="leaderboard-card-head">
+							<span class="rank" class:rank-1={player.rank === 1} class:rank-2={player.rank === 2} class:rank-3={player.rank === 3}>
+								{player.rank}
+							</span>
+							<strong>{player.name}</strong>
+							<strong class="leaderboard-card-score">{player.points}<span>pts</span></strong>
+						</div>
+						<div class="leaderboard-card-meta">
+							<span><b>{player.played}</b> tournoi{player.played > 1 ? 's' : ''}</span>
+							<span><b>{player.wins}</b> victoire{player.wins > 1 ? 's' : ''}</span>
+						</div>
+					</article>
+				{/each}
+			</div>
 		{/if}
 	</div>
 </section>
@@ -77,7 +94,7 @@
 		{#if data.hands.length === 0}
 			<div class="empty">Aucune main 7-2 enregistrée pour le moment.</div>
 		{:else}
-			<div class="table-wrap">
+			<div class="table-wrap desktop-only">
 				<table class="table">
 					<thead>
 						<tr>
@@ -102,6 +119,22 @@
 						{/each}
 					</tbody>
 				</table>
+			</div>
+			<div class="leaderboard-cards mobile-only">
+				{#each data.hands as player, index (player.id)}
+					<article class="leaderboard-card">
+						<div class="leaderboard-card-head">
+							<span class="rank" class:rank-1={index === 0} class:rank-2={index === 1} class:rank-3={index === 2}>
+								{index + 1}
+							</span>
+							<strong>{player.name}</strong>
+							<strong class="leaderboard-card-score">{player.hands}<span>mains</span></strong>
+						</div>
+						<div class="leaderboard-card-meta">
+							<span><b>{player.tournaments}</b> tournoi{player.tournaments > 1 ? 's' : ''}</span>
+						</div>
+					</article>
+				{/each}
 			</div>
 		{/if}
 	</div>

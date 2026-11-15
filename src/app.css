@@ -612,6 +612,62 @@ table.table {
 	color: #e0b18b;
 }
 
+.leaderboard-cards {
+	display: grid;
+	gap: 0.6rem;
+}
+
+.leaderboard-card {
+	padding: 0.8rem 0.9rem;
+	border: 1px solid var(--line);
+	border-radius: 12px;
+	background: var(--panel-2);
+}
+
+.leaderboard-card-head {
+	display: flex;
+	align-items: center;
+	gap: 0.65rem;
+}
+
+.leaderboard-card-head strong {
+	min-width: 0;
+	overflow-wrap: anywhere;
+}
+
+.leaderboard-card-score {
+	display: inline-flex;
+	align-items: baseline;
+	gap: 0.2rem;
+	margin-left: auto;
+	color: var(--gold-soft);
+	font-size: 1.05rem;
+	white-space: nowrap;
+}
+
+.leaderboard-card-score span {
+	color: var(--muted);
+	font-size: 0.66rem;
+	font-weight: 700;
+	letter-spacing: 0.07em;
+	text-transform: uppercase;
+}
+
+.leaderboard-card-meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 0.2rem 0.9rem;
+	margin-top: 0.45rem;
+	padding-left: calc(26px + 0.65rem);
+	color: var(--muted);
+	font-size: 0.8rem;
+}
+
+.leaderboard-card-meta b {
+	color: var(--text);
+	font-weight: 650;
+}
+
 /* ---------- Stats ---------- */
 
 .stat {
@@ -1495,10 +1551,35 @@ table.table {
 		padding: 0.5rem 0.7rem;
 	}
 
+	/* Barre supérieure : marque compacte et navigation défilable. */
+	.topbar-inner {
+		gap: 0.6rem;
+	}
+
+	.topbar-spacer,
+	.topbar-inner > .badge {
+		display: none;
+	}
+
+	.nav {
+		flex: 1 1 auto;
+		min-width: 0;
+		scroll-snap-type: x proximity;
+		-webkit-mask-image: linear-gradient(to right, transparent, #000 10px, #000 calc(100% - 18px), transparent);
+		mask-image: linear-gradient(to right, transparent, #000 10px, #000 calc(100% - 18px), transparent);
+	}
+
 	.nav a {
 		display: inline-flex;
 		align-items: center;
 		min-height: 44px;
+		border: 1px solid transparent;
+		font-weight: 600;
+		scroll-snap-align: center;
+	}
+
+	.nav a.active {
+		border-color: rgba(227, 189, 92, 0.32);
 	}
 
 	/* Horloge compacte et onglets toujours visibles sous la barre de navigation. */
@@ -1675,11 +1756,21 @@ table.table {
 @media (max-width: 620px) {
 	.topbar-inner {
 		min-height: 56px;
-		gap: 0.8rem;
+		gap: 0.5rem;
+	}
+
+	.brand-logo {
+		width: 40px;
+		height: 40px;
 	}
 
 	.brand span:last-child {
 		display: none;
+	}
+
+	.nav a {
+		padding-inline: 0.65rem;
+		font-size: 0.86rem;
 	}
 
 	main {
