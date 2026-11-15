@@ -671,6 +671,7 @@ table.table {
 }
 
 .tournament-row {
+	position: relative;
 	display: flex;
 	flex-wrap: wrap;
 	align-items: center;
@@ -682,13 +683,35 @@ table.table {
 	background: var(--panel);
 }
 
-.tournament-row:hover {
+.tournament-row:hover,
+.tournament-row:focus-within {
 	border-color: #354a3c;
 }
 
 .tournament-row a {
 	color: var(--text);
 	font-weight: 600;
+}
+
+.tournament-row-link {
+	position: absolute;
+	inset: 0;
+	z-index: 1;
+	border-radius: inherit;
+}
+
+.tournament-row-main,
+.tournament-row-actions {
+	pointer-events: none;
+}
+
+.tournament-row-actions {
+	position: relative;
+	z-index: 2;
+}
+
+.tournament-row-actions :is(a, button) {
+	pointer-events: auto;
 }
 
 /* ---------- Screen / clock ---------- */

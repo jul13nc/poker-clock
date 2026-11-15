@@ -1,7 +1,7 @@
 import { expect, it, vi } from 'vitest';
 vi.mock('cloudflare:workers', () => ({ env: {} }));
 import { testDb } from './test-db';
-import { getStandingsPoints, getStandingsPointsExcluding } from './data';
+import { getStandingsPoints } from './data';
 
 it('classement actuel inclut leader absent, soirées ultérieures et ex æquo', async () => {
 	const { db, sqlite } = testDb();
@@ -14,5 +14,4 @@ it('classement actuel inclut leader absent, soirées ultérieures et ex æquo', 
 	expect((await getStandingsPoints(db, 's')).map((p) => [p.id, p.rank, p.points])).toEqual([
 		['leader', 1, 20], ['a', 2, 10], ['b', 2, 10]
 	]);
-	expect((await getStandingsPointsExcluding(db, 's', 'old')).map((p) => p.id)).toEqual(['leader']);
 });

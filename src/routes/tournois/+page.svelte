@@ -33,9 +33,12 @@
 	<div class="stack">
 		{#each data.tournaments as tournament (tournament.id)}
 			<article class="tournament-row">
-				<div class="stack" style="gap: 0.25rem;">
+				<a class="tournament-row-link" href="/t/{tournament.id}/resultats">
+					<span class="visually-hidden">Voir les résultats de {tournament.name}</span>
+				</a>
+				<div class="tournament-row-main stack" style="gap: 0.25rem;">
 					<div class="cluster">
-						<a href="/t/{tournament.id}">{tournament.name}</a>
+						<strong>{tournament.name}</strong>
 						{#if tournament.multiplier === 2}
 							<span class="badge badge-gold">Journée double</span>
 						{/if}
@@ -49,16 +52,13 @@
 						· buy-in {formatEuro(tournament.buy_in)}
 					</span>
 				</div>
-				<div class="cluster">
+				<div class="cluster tournament-row-actions">
 					<span class="small muted">Pool {formatEuro(tournament.buy_in * tournament.entries_count)}</span>
 					<WhatsappExport href={`/t/${tournament.id}/whatsapp`} compact />
 					{#if tournament.status === 'running'}
 						<a class="btn btn-sm" href="/live">Écran</a>
 						<a class="btn btn-sm btn-gold" href="/t/{tournament.id}/controle">Contrôle</a>
-					{:else if tournament.status === 'finished'}
-						<a class="btn btn-sm" href="/t/{tournament.id}/resultats">Résultats</a>
-						<a class="btn btn-sm btn-gold" href="/t/{tournament.id}/synthese">Synthèse</a>
-					{:else}
+					{:else if tournament.status === 'draft'}
 						<a class="btn btn-sm" href="/t/{tournament.id}">Ouvrir</a>
 					{/if}
 				</div>

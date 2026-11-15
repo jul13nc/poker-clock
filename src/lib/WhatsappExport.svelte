@@ -70,7 +70,7 @@
 	class="btn btn-sm"
 	type="button"
 	onclick={copy}
-	title={compact ? 'Copier une synthèse des résultats' : undefined}
+	title={compact ? 'Copier les résultats' : undefined}
 >
 	{status === 'copied'
 		? 'Copié !'

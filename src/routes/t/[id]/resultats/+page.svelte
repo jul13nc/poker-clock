@@ -33,7 +33,6 @@
 		</div>
 	</div>
 	<div class="cluster">
-		<a class="btn btn-gold" href="/t/{data.tournament.id}/synthese">Synthèse du jour</a>
 		<a class="btn" href="/classements">Classements</a>
 		{#if data.isAdmin}
 			<a class="btn" href="/t/{data.tournament.id}/cloture">Modifier</a>

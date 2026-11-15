@@ -413,7 +413,6 @@
 			>
 				Annuler la dernière élimination
 			</button>
-			<a class="btn btn-sm btn-ghost" href="/t/{live.id}/synthese">Synthèse du jour</a>
 		</div>
 		<p class="hint">
 			Chaque élimination attribue la dernière place libre. La recave d'un joueur éliminé le

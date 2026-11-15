@@ -38,7 +38,6 @@
 			<a class="btn btn-primary" href="/t/{data.tournament.id}/controle">Contrôle</a>
 		{:else if data.tournament.status === 'finished'}
 			<a class="btn" href="/t/{data.tournament.id}/resultats">Résultats</a>
-			<a class="btn btn-gold" href="/t/{data.tournament.id}/synthese">Synthèse du jour</a>
 		{:else}
 			<a class="btn btn-primary" href="/t/{data.tournament.id}/controle">Ouvrir le contrôle</a>
 		{/if}

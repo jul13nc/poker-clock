@@ -228,33 +228,6 @@ export async function getStandingsPoints(
 	));
 }
 
-/**
- * Classement de la saison en ignorant un tournoi donné. Sert à calculer le cumul
- * « avant » puis « après » la journée affichée dans la synthèse.
- */
-export async function getStandingsPointsExcluding(
-	db: D1Database,
-	seasonId: string,
-	excludedTournamentId: string
-): Promise<StandingPoints[]> {
-	return rankStandings(await queryAll<StandingPointsRow>(
-		db,
-		`SELECT p.id, p.name,
-		        COALESCE(SUM(tp.points), 0) AS points,
-		        COUNT(*) AS played,
-		        SUM(CASE WHEN tp.finish_rank = 1 THEN 1 ELSE 0 END) AS wins
-		 FROM tournament_players tp
-		 JOIN players p ON p.id = tp.player_id
-		 JOIN tournaments t ON t.id = tp.tournament_id
-		 WHERE t.season_id = ? AND t.status = 'finished' AND tp.finish_rank IS NOT NULL
-		   AND t.id <> ?
-		 GROUP BY p.id, p.name
-		 ORDER BY points DESC, wins DESC, p.name COLLATE NOCASE`,
-		seasonId,
-		excludedTournamentId
-	));
-}
-
 export async function getStandings72(db: D1Database, seasonId: string): Promise<Standing72[]> {
 	return queryAll<Standing72>(
 		db,
